@@ -1,0 +1,45 @@
+name: Rust CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Format, Clippy, Test & No-FFmpeg Guard
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: No-FFmpeg Guard
+        shell: bash
+        run: |
+          if grep -RInE 'ffmpeg|ffprobe|libav(codec|format|util|filter)|swscale|gstreamer' src/ tests/ Cargo.toml build.rs \
+             | grep -v -f ci/ffmpeg-allowlist.txt ; then
+            echo "ERROR: forbidden ffmpeg/gstreamer reference found"
+            exit 1
+          fi
+      - name: Run unit and integration tests
+        run: cargo test --all-targets
+
+  deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2

@@ -1,0 +1,3 @@
+# Allowlist for the CI no-ffmpeg guard (matches that intentionally explain
+# compatibility with legacy ffmpeg behavior or scene-score equivalence).
+src/media/scene.rs:.*lavfi\.scene_score
