@@ -1,0 +1,53 @@
+{
+  "width": 320,
+  "height": 180,
+  "frames": [
+    "solid_black",
+    "gray_50",
+    "checkerboard",
+    "horizontal_gradient",
+    "solid_white"
+  ],
+  "transitions": [
+    {
+      "index": 0,
+      "from": "initial",
+      "to": "solid_black",
+      "lavfi_scene_score": 0.0,
+      "rust_scene_score": 0.0,
+      "abs_diff": 0.0
+    },
+    {
+      "index": 1,
+      "from": "solid_black",
+      "to": "gray_50",
+      "lavfi_scene_score": 1.0,
+      "rust_scene_score": 1.0,
+      "abs_diff": 0.0
+    },
+    {
+      "index": 2,
+      "from": "gray_50",
+      "to": "checkerboard",
+      "lavfi_scene_score": 0.005,
+      "rust_scene_score": 0.005,
+      "abs_diff": 0.0
+    },
+    {
+      "index": 3,
+      "from": "checkerboard",
+      "to": "horizontal_gradient",
+      "lavfi_scene_score": 0.004265,
+      "rust_scene_score": 0.004264583333333291,
+      "abs_diff": 4.166666667084276e-7
+    },
+    {
+      "index": 4,
+      "from": "horizontal_gradient",
+      "to": "solid_white",
+      "lavfi_scene_score": 0.009233,
+      "rust_scene_score": 0.00923333333333332,
+      "abs_diff": 3.333333333209454e-7
+    }
+  ]
+}
