@@ -42,7 +42,7 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 |[x]|`helpers.go:resolveRTSPTransport`|Flag (if explicitly changed) > `cam.RTSPTransport` > `cfg.Defaults.RTSPTransport` > flag default (`tcp`)|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::transport_precedence`|
 |[x]|`helpers.go:resolveRTSPAuth`|Flag (if explicitly changed) > `cam.RTSPAuth` > `cfg.Defaults.RTSPAuth` > flag default (`auto`); normalize & validate `auto\|basic\|digest`|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::auth_precedence`|
 |[x]|`helpers.go:resolveTimeout`|Flag (if explicitly changed) > `cfg.Defaults.Timeout` (if `>0`) > flag default (`10s`)|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::timeout_precedence`|
-|[ ]|`watch.go` resolution|`threshold`, `clip_duration`, `cooldown`: Flag (if changed) > `cam.*` > `cfg.Defaults.*` > flag default (`0.25`, `0s`, `10s`); reject `threshold <= 0 \|\| threshold >= 1`|`src/cli/watch.rs`|`src/cli/watch.rs::tests::*`|
+|[x]|`watch.go` resolution|`threshold`, `clip_duration`, `cooldown`: Flag (if changed) > `cam.*` > `cfg.Defaults.*` > flag default (`0.25`, `0s`, `10s`); reject `threshold <= 0 \|\| threshold >= 1`|`src/cli/watch.rs`|`tests/cli_watch.rs`|
 
 ## 3.5 Subcommands
 

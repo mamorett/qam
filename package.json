@@ -1,0 +1,13 @@
+{
+  "name": "qam-scripts",
+  "version": "0.4.0",
+  "private": true,
+  "scripts": {
+    "qam": "cargo run --bin qam --",
+    "build": "cargo build --release --bin qam",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-targets -- -D warnings",
+    "format": "cargo fmt",
+    "check": "make lint test"
+  }
+}
