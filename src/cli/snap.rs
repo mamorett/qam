@@ -55,7 +55,7 @@ pub struct SnapArgs {
     pub rtsp_client: Option<String>,
 
     /// Slack channel to post to
-    #[arg(long = "slack-channel")]
+    #[arg(long = "slack-channel", num_args = 0..=1, default_missing_value = "")]
     pub slack_channel: Option<String>,
 
     /// Slack API token (xoxb-...)
@@ -190,7 +190,12 @@ pub async fn run_snap(
     let slack_channel = resolve_slack_channel(args.slack_channel.as_deref().unwrap_or(""), &cfg);
 
     let mut uploaded = false;
-    if !slack_channel.is_empty() {
+    if args.slack_channel.is_some() || !slack_channel.is_empty() {
+        if slack_channel.is_empty() {
+            return Err(QamError::Slack(
+                "no Slack channel specified: pass a channel (e.g. --slack-channel \"#cam\" or --slack-channel=#cam) or configure a default channel with 'qam slack set --channel <channel>'. Note: in shells like zsh/bash, an unquoted '#' starts a comment.".to_string(),
+            ));
+        }
         if out_path == "-" {
             return Err(QamError::Usage(
                 "--out - cannot be used with Slack upload".into(),

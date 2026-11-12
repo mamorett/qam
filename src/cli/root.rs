@@ -166,6 +166,8 @@ fn build_snap_cmd() -> Command {
         .arg(
             Arg::new("slack-channel")
                 .long("slack-channel")
+                .num_args(0..=1)
+                .default_missing_value("")
                 .help("Slack channel or user to upload to (e.g. #general, @alice)"),
         )
         .arg(
@@ -259,6 +261,8 @@ fn build_clip_cmd() -> Command {
         .arg(
             Arg::new("slack-channel")
                 .long("slack-channel")
+                .num_args(0..=1)
+                .default_missing_value("")
                 .help("Slack channel or user to upload to (e.g. #general, @alice)"),
         )
         .arg(
@@ -336,6 +340,8 @@ fn build_audio_cmd() -> Command {
         .arg(
             Arg::new("slack-channel")
                 .long("slack-channel")
+                .num_args(0..=1)
+                .default_missing_value("")
                 .help("Slack channel or user to upload to (e.g. #general, @alice)"),
         )
         .arg(

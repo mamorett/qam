@@ -51,7 +51,7 @@ pub struct AudioArgs {
     pub overwrite: Option<String>,
 
     /// Slack channel to post to
-    #[arg(long = "slack-channel")]
+    #[arg(long = "slack-channel", num_args = 0..=1, default_missing_value = "")]
     pub slack_channel: Option<String>,
 
     /// Slack API token (xoxb-...)

@@ -41,14 +41,12 @@ pub async fn execute_test(
 
     if token.is_empty() {
         return Err(QamError::Slack(
-            "no Slack token found (use SLACK_TOKEN env var or 'camsnap slack set --token')"
-                .to_string(),
+            "no Slack token found (use SLACK_TOKEN env var or 'qam slack set --token')".to_string(),
         ));
     }
     if channel.is_empty() {
         return Err(QamError::Slack(
-            "no Slack channel specified (use --channel or 'camsnap slack set --channel')"
-                .to_string(),
+            "no Slack channel specified (use --channel or 'qam slack set --channel')".to_string(),
         ));
     }
 

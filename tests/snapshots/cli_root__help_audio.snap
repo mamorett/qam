@@ -30,7 +30,7 @@ Options:
           RTSP transport: tcp|udp [default: tcp]
   -s, --seconds <seconds>
           Recording duration in seconds (alternative to --dur)
-      --slack-channel <slack-channel>
+      --slack-channel [<slack-channel>]
           Slack channel or user to upload to (e.g. #general, @alice)
       --slack-message <slack-message>
           Optional message to post with the file
