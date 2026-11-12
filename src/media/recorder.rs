@@ -78,17 +78,40 @@ async fn record_video_clip(opts: &ClipRecordOptions<'_>, tmp_path: &Path) -> Res
 
     let mut decoder = VideoDecoder::new(video_codec)?;
     let mut muxer: Option<Muxer<std::io::BufWriter<std::fs::File>>> = None;
-    let mut last_ts = 0u64;
 
-    let start_time = tokio::time::Instant::now();
-    let deadline = start_time + opts.duration;
+    let target_ticks = (opts.duration.as_secs_f64() * 90_000.0).round() as u64;
 
-    while tokio::time::Instant::now() < deadline {
+    struct PendingSample {
+        data: Vec<u8>,
+        is_keyframe: bool,
+        ts_ticks: i64,
+        instant: tokio::time::Instant,
+    }
+
+    let mut pending_sample: Option<PendingSample> = None;
+    let mut current_dts = 0u64;
+    let mut last_sample_dur = 3000u32;
+
+    let mut recording_start: Option<tokio::time::Instant> = None;
+    let mut recording_deadline =
+        tokio::time::Instant::now() + opts.duration + Duration::from_secs(30);
+
+    loop {
+        if recording_start.is_some()
+            && (current_dts >= target_ticks || tokio::time::Instant::now() >= recording_deadline)
+        {
+            break;
+        }
+
         let frame_fut = session.next_frame();
         let frame_opt = tokio::select! {
             _ = crate::signals::wait_for_shutdown() => {
                 session.teardown().await;
                 if let Some(ref mut m) = muxer {
+                    if let Some(ps) = pending_sample.take() {
+                        let avcc = annex_b_to_avcc(&ps.data);
+                        let _ = m.write_video_sample(avcc, current_dts, last_sample_dur, ps.is_keyframe);
+                    }
                     let _ = m.finalize();
                     let _ = std::fs::copy(tmp_path, opts.out_path);
                 }
@@ -113,6 +136,8 @@ async fn record_video_clip(opts: &ClipRecordOptions<'_>, tmp_path: &Path) -> Res
             MediaPayload::Video {
                 data, is_keyframe, ..
             } => {
+                let now = tokio::time::Instant::now();
+
                 if muxer.is_none() {
                     if !is_keyframe {
                         continue;
@@ -132,14 +157,44 @@ async fn record_video_clip(opts: &ClipRecordOptions<'_>, tmp_path: &Path) -> Res
                     let mut m = Muxer::create(tmp_path, 90000)?;
                     m.add_video_track(video_codec, width, height, 90000, &sps_bytes, &pps_bytes)?;
                     muxer = Some(m);
+
+                    recording_start = Some(now);
+                    recording_deadline = now + opts.duration;
+
+                    pending_sample = Some(PendingSample {
+                        data,
+                        is_keyframe,
+                        ts_ticks: frame.timestamp_ticks,
+                        instant: now,
+                    });
+                    continue;
                 }
 
-                if let Some(ref mut m) = muxer {
-                    let avcc = annex_b_to_avcc(&data);
-                    let sample_dur = 3000; // ~30 fps
-                    m.write_video_sample(avcc, last_ts, sample_dur, is_keyframe)?;
-                    last_ts += sample_dur as u64;
+                if let Some(ps) = pending_sample.take() {
+                    let rtp_delta = frame.timestamp_ticks.wrapping_sub(ps.ts_ticks);
+                    let dur = if rtp_delta > 0 && rtp_delta <= 180_000 {
+                        rtp_delta as u32
+                    } else {
+                        let wall_elapsed = now.duration_since(ps.instant);
+                        let ticks = (wall_elapsed.as_secs_f64() * 90_000.0).round() as u32;
+                        ticks.clamp(1_500, 30_000)
+                    };
+
+                    last_sample_dur = dur;
+
+                    if let Some(ref mut m) = muxer {
+                        let avcc = annex_b_to_avcc(&ps.data);
+                        m.write_video_sample(avcc, current_dts, dur, ps.is_keyframe)?;
+                        current_dts += dur as u64;
+                    }
                 }
+
+                pending_sample = Some(PendingSample {
+                    data,
+                    is_keyframe,
+                    ts_ticks: frame.timestamp_ticks,
+                    instant: now,
+                });
             }
             MediaPayload::Audio { .. } => {
                 // Audio muxing if enabled
@@ -148,6 +203,11 @@ async fn record_video_clip(opts: &ClipRecordOptions<'_>, tmp_path: &Path) -> Res
     }
 
     session.teardown().await;
+
+    if let (Some(ref mut m), Some(ps)) = (muxer.as_mut(), pending_sample.take()) {
+        let avcc = annex_b_to_avcc(&ps.data);
+        let _ = m.write_video_sample(avcc, current_dts, last_sample_dur, ps.is_keyframe);
+    }
 
     if let Some(ref mut m) = muxer {
         m.finalize()?;
@@ -184,11 +244,20 @@ async fn record_audio_stream(
         8000
     };
 
+    let target_samples = (opts.duration.as_secs_f64() * clock_rate as f64).round() as usize;
     let mut pcm_samples = Vec::new();
-    let start_time = tokio::time::Instant::now();
-    let deadline = start_time + opts.duration;
+    let mut recording_start: Option<tokio::time::Instant> = None;
+    let mut recording_deadline =
+        tokio::time::Instant::now() + opts.duration + Duration::from_secs(30);
 
-    while tokio::time::Instant::now() < deadline {
+    loop {
+        if recording_start.is_some()
+            && (pcm_samples.len() >= target_samples
+                || tokio::time::Instant::now() >= recording_deadline)
+        {
+            break;
+        }
+
         let frame_fut = session.next_frame();
         let frame_opt = tokio::select! {
             _ = crate::signals::wait_for_shutdown() => {
@@ -215,6 +284,12 @@ async fn record_audio_stream(
         };
 
         if let MediaPayload::Audio { data, codec } = frame.payload {
+            if recording_start.is_none() {
+                let now = tokio::time::Instant::now();
+                recording_start = Some(now);
+                recording_deadline = now + opts.duration;
+            }
+
             match codec {
                 AudioCodec::Pcma => {
                     pcm_samples.extend(decode_g711_to_s16le(&data, true));
