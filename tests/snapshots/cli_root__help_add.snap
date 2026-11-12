@@ -1,0 +1,37 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Add or update a camera
+
+Usage: qam add [OPTIONS]
+
+Options:
+      --name <name>
+          Camera name (unique)
+      --config <path>
+          Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --host <host>
+          Camera host or IP
+      --port <port>
+          Camera port (default 554) [default: 554]
+      --protocol <protocol>
+          Protocol (rtsp or rtsps) [default: rtsp]
+      --user <user>
+          Camera username
+      --pass <pass>
+          Camera password
+      --path <path>
+          Explicit RTSP path (e.g., /Bfy... token from UniFi Protect)
+      --rtsp-transport <rtsp-transport>
+          Preferred RTSP transport for this camera (tcp|udp)
+      --stream <stream>
+          Default RTSP stream path (stream1 or stream2)
+      --rtsp-client <rtsp-client>
+          Default RTSP client (ffmpeg|gortsplib)
+      --no-audio[=<no-audio>]
+          Default: drop audio for this camera
+      --audio-codec <audio-codec>
+          Default audio codec when recording (e.g., aac)
+  -h, --help
+          Print help

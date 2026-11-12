@@ -1,0 +1,13 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Store Slack credentials in config
+
+Usage: qam slack set [OPTIONS]
+
+Options:
+      --channel <channel>  Default Slack channel or user
+      --config <path>      Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --token <token>      Slack API token
+  -h, --help               Print help

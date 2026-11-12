@@ -1,0 +1,16 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Manage Slack configuration
+
+Usage: qam slack [OPTIONS] [COMMAND]
+
+Commands:
+  set   Store Slack credentials in config
+  test  Test Slack upload with a file
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+      --config <path>  Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+  -h, --help           Print help

@@ -1,0 +1,13 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Discover cameras on the local network via ONVIF WS-Discovery
+
+Usage: qam discover [OPTIONS]
+
+Options:
+      --info[=<info>]      Attempt ONVIF GetDeviceInformation (may require credentials)
+      --config <path>      Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --timeout <timeout>  Discovery timeout [default: 3s]
+  -h, --help               Print help

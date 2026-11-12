@@ -5,8 +5,8 @@ async fn main() -> ExitCode {
     match qam::run(std::env::args_os()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
-            eprintln!("Error: {err}");
-            ExitCode::from(1)
+            eprintln!("{err}");
+            ExitCode::from(err.exit_code())
         }
     }
 }

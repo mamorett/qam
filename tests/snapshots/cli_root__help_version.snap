@@ -1,0 +1,11 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Show qam version
+
+Usage: qam version [OPTIONS]
+
+Options:
+      --config <path>  Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+  -h, --help           Print help

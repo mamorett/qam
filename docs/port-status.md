@@ -6,14 +6,14 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`cmd/camsnap/main.go`|Exit code `1` on any command error; print error to `stderr` cleanly|`src/main.rs`|`tests/cli_root.rs`|
-|[ ]|`internal/cli/root.go`|Binary name `qam`; short + long descriptions; command ordering; help template|`src/cli/mod.rs`|`tests/cli_root.rs` (`insta` snapshot)|
-|[ ]|`root.go` persistent flags|`--config` (`string`), `--rtsp-transport` (`tcp\|udp`, default `tcp`), `--rtsp-auth` (`auto\|basic\|digest`, default `auto`), `--timeout` (`duration`, default `10s`), `--debug` (`bool`), `--json` (`bool`), `--no-color` (`bool`)|`src/cli/flags.rs`|`tests/cli_root.rs`|
-|[ ]|`root.go:normalizeBoolFlagArgs`|Support `--flag=true`, `--flag=false`, `--flag=1`, `--flag=0` on boolean flags (`--overwrite`, `--audio`, `--with-audio`, `--debug`, `--json`, `--no-color`, `--info`, `--probe`, `--dry-run`, `--keep`)|`src/cli/flags.rs`|`tests/cli_root.rs::bool_equals_syntax`|
-|[ ]|`root.go:SilenceUsage/Errors`|Do not print usage on runtime errors; print single `Error: <msg>` line to `stderr` (matching Go `cmd.PrintErrln("Error:", err)`)|`src/main.rs`|`tests/cli_root.rs`|
-|[ ]|`root.go:argsIgnoreRemaining`|All subcommands except `slack test` ignore unexpected positional args|`src/cli/mod.rs`|`tests/cli_root.rs`|
+|[x]|`cmd/camsnap/main.go`|Exit code `1` on any command error; print error to `stderr` cleanly|`src/main.rs`|`tests/cli_root.rs`|
+|[x]|`internal/cli/root.go`|Binary name `qam`; short + long descriptions; command ordering; help template|`src/cli/mod.rs`|`tests/cli_root.rs` (`insta` snapshot)|
+|[x]|`root.go` persistent flags|`--config` (`string`), `--rtsp-transport` (`tcp\|udp`, default `tcp`), `--rtsp-auth` (`auto\|basic\|digest`, default `auto`), `--timeout` (`duration`, default `10s`), `--debug` (`bool`), `--json` (`bool`), `--no-color` (`bool`)|`src/cli/flags.rs`|`tests/cli_root.rs`|
+|[x]|`root.go:normalizeBoolFlagArgs`|Support `--flag=true`, `--flag=false`, `--flag=1`, `--flag=0` on boolean flags (`--overwrite`, `--audio`, `--with-audio`, `--debug`, `--json`, `--no-color`, `--info`, `--probe`, `--dry-run`, `--keep`)|`src/cli/flags.rs`|`tests/cli_root.rs::bool_equals_syntax`|
+|[x]|`root.go:SilenceUsage/Errors`|Do not print usage on runtime errors; print single `Error: <msg>` line to `stderr` (matching Go `cmd.PrintErrln("Error:", err)`)|`src/main.rs`|`tests/cli_root.rs`|
+|[x]|`root.go:argsIgnoreRemaining`|All subcommands except `slack test` ignore unexpected positional args|`src/cli/mod.rs`|`tests/cli_root.rs`|
 |[x]|`internal/cli/color.go`|Color disabled if `--no-color`, `NO_COLOR != ""`, `TERM == "dumb"`, or stdout is not a TTY|`src/cli/style.rs`|`src/cli/style.rs` unit tests|
-|[ ]|`root.go`|Shell completions (`completion bash\|zsh\|fish\|powershell`) + `--version` / `-v` flag on root|`src/cli/completion.rs`|`tests/cli_root.rs`|
+|[x]|`root.go`|Shell completions (`completion bash\|zsh\|fish\|powershell`) + `--version` / `-v` flag on root|`src/cli/completion.rs`|`tests/cli_root.rs`|
 
 ## 3.2 Configuration (`~/.config/qam/config.yaml` with fallback to `~/.config/camsnap/config.yaml`)
 
@@ -50,14 +50,14 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`add.go`|Flags: `--name` (required), `--host`, `--url`, `--port` (`554`), `--user`, `--pass`, `--path`, `--scheme` (`rtsp`), `--rtsp-transport`, `--rtsp-auth`, `--threshold` (`0`), `--clip-duration` (`0`), `--cooldown` (`0`)|`src/cli/add.rs`|`tests/cli_config.rs`|
-|[ ]|`add.go`|Validate `--name` non-empty, `--host` or `--url` required, validate `--rtsp-transport` & `--rtsp-auth` if set; save config; print `Saved camera <name> -> <config_path>`|`src/cli/add.rs`|`tests/cli_config.rs`|
+|[x]|`add.go`|Flags: `--name` (required), `--host`, `--url`, `--port` (`554`), `--user`, `--pass`, `--path`, `--scheme` (`rtsp`), `--rtsp-transport`, `--rtsp-auth`, `--threshold` (`0`), `--clip-duration` (`0`), `--cooldown` (`0`)|`src/cli/add.rs`|`tests/cli_config.rs`|
+|[x]|`add.go`|Validate `--name` non-empty, `--host` or `--url` required, validate `--rtsp-transport` & `--rtsp-auth` if set; save config; print `Saved camera <name> -> <config_path>`|`src/cli/add.rs`|`tests/cli_config.rs`|
 
 ### `list` / `ls` (`internal/cli/list.go`)
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`list.go`|Aliases: `ls`. If empty: print `No cameras configured.` (or `[]` when `--json`). Otherwise print `<name>: <redacted_url>` per camera (or JSON array of `Camera` structs with password redacted as `***` in `pass` and `url`)|`src/cli/list.rs`|`tests/cli_config.rs`|
+|[x]|`list.go`|Aliases: `ls`. If empty: print `No cameras configured.` (or `[]` when `--json`). Otherwise print `<name>: <redacted_url>` per camera (or JSON array of `Camera` structs with password redacted as `***` in `pass` and `url`)|`src/cli/list.rs`|`tests/cli_config.rs`|
 
 ### `version` (`internal/cli/version.go`)
 

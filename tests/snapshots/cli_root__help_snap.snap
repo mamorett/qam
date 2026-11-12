@@ -1,0 +1,38 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Capture a single frame to a file
+
+Usage: qam snap [OPTIONS] [camera_pos]
+
+Arguments:
+  [camera_pos]  Camera name to use
+
+Options:
+      --camera <camera>
+          Camera name to use
+      --config <path>
+          Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --out <out>
+          Output file (e.g., snap.jpg)
+      --path <path>
+          Custom RTSP path (overrides --stream), e.g., /Bfy... from UniFi Protect
+      --rtsp-auth <rtsp-auth>
+          RTSP auth mode: auto|basic|digest [default: auto]
+      --rtsp-client <rtsp-client>
+          RTSP client: ffmpeg|gortsplib [default: ffmpeg]
+      --rtsp-transport <rtsp-transport>
+          RTSP transport: tcp|udp [default: tcp]
+      --slack-channel <slack-channel>
+          Slack channel or user to upload to (e.g. #general, @alice)
+      --slack-message <slack-message>
+          Optional message to post with the file
+      --slack-token <slack-token>
+          Slack API token (overrides config and SLACK_TOKEN env var)
+      --stream <stream>
+          RTSP path segment (stream1 or stream2); ignored if --path is set
+      --timeout <timeout>
+          Timeout for capture [default: 30s]
+  -h, --help
+          Print help

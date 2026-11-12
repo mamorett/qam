@@ -1,0 +1,16 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Test Slack upload with a file
+
+Usage: qam slack test [OPTIONS] <file>
+
+Arguments:
+  <file>  File to upload
+
+Options:
+      --channel <channel>  Slack channel or user (overrides default)
+      --config <path>      Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --message <message>  Message to post
+  -h, --help               Print help

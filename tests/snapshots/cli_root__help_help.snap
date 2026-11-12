@@ -1,0 +1,49 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+qam – capture frames/clips and motion from RTSP/ONVIF cameras.
+
+Common commands:
+  snap     grab a frame (positional camera name allowed)
+  clip     short clip; drop audio with --no-audio
+  audio    record audio clip (default 10s, copy codec, .wav)
+  doctor   checks media engine, reachability, optional RTSP probe
+
+Usage: qam [OPTIONS] [COMMAND]
+
+Commands:
+  add         Add or update a camera
+  list        List saved cameras [alias: ls]
+  snap        Capture a single frame to a file
+  clip        Record a short clip to a file
+  audio       Record an audio-only clip to a file [alias: record-audio]
+  discover    Discover cameras on the local network via ONVIF WS-Discovery
+  watch       Run motion detection and execute an action
+  doctor      Run basic checks (media engine, config present, camera ports reachable)
+  slack       Manage Slack configuration
+  version     Show qam version
+  completion  Generate the autocompletion script for qam for the specified shell
+  help        Print this message or the help of the given subcommand(s)
+
+Options:
+  -v, --version
+          version for qam
+
+      --config <path>
+          Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  qam add --name kitchen --host 192.168.0.175 --user tapo --pass secret --rtsp-transport udp
+  --stream stream2
+  qam snap kitchen --out shot.jpg
+  qam snap kitchen --slack-channel #security --slack-message "Kitchen check!"
+  qam clip kitchen --dur 5s --no-audio --out clip.mp4
+  qam clip kitchen --dur 10s --slack-channel @steve
+  qam audio kitchen --seconds 10 --out audio.wav
+  qam watch kitchen --threshold 0.2 --cooldown 5s --action 'qam snap kitchen --slack-channel
+  #alerts'
+  qam doctor --probe --rtsp-transport udp

@@ -1,0 +1,38 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Run motion detection and execute an action
+
+Usage: qam watch [OPTIONS] [camera_pos]
+
+Arguments:
+  [camera_pos]  Camera name to monitor
+
+Options:
+      --action <action>
+          Command to execute when motion detected
+      --action-template <action-template>
+          Optional template to build action command (placeholders: {camera},{score},{time})
+      --config <path>
+          Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --camera <camera>
+          Camera name to monitor
+      --cooldown <cooldown>
+          Cooldown between triggering actions [default: 5s]
+      --duration <duration>
+          Optional max runtime (0 = until interrupted) [default: 0s]
+      --json[=<json>]
+          Log motion events as JSON lines
+      --path <path>
+          Custom RTSP path (overrides --stream), e.g., /Bfy... from UniFi Protect
+      --rtsp-auth <rtsp-auth>
+          RTSP auth mode: auto|basic|digest [default: auto]
+      --rtsp-transport <rtsp-transport>
+          RTSP transport: tcp|udp [default: tcp]
+      --stream <stream>
+          RTSP path segment (stream1 or stream2); ignored if --path is set
+      --threshold <threshold>
+          Scene change threshold (0-1, higher = less sensitive) [default: 0.2]
+  -h, --help
+          Print help

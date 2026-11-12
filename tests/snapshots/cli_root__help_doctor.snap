@@ -1,0 +1,21 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Run basic checks (media engine, config present, camera ports reachable)
+
+Usage: qam doctor [OPTIONS]
+
+Options:
+      --probe[=<probe>]
+          Probe each RTSP URL briefly
+      --config <path>
+          Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --rtsp-auth <rtsp-auth>
+          RTSP auth mode: auto|basic|digest [default: auto]
+      --rtsp-transport <rtsp-transport>
+          RTSP transport: tcp|udp (probe) [default: tcp]
+      --timeout <timeout>
+          Dial timeout per camera [default: 2s]
+  -h, --help
+          Print help

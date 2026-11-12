@@ -1,0 +1,44 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Record an audio-only clip to a file
+
+Usage: qam audio [OPTIONS] [camera_pos]
+
+Arguments:
+  [camera_pos]  Camera name to use
+
+Options:
+      --audio-codec <audio-codec>
+          Audio codec (default copy) [default: copy]
+      --camera <camera>
+          Camera name to use
+      --config <path>
+          Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --dur <dur>
+          Recording duration (e.g., 10s) [default: 10s]
+      --out <out>
+          Output file (e.g., output_audio.wav)
+      --overwrite[=<overwrite>]
+          Overwrite output file if it exists
+      --path <path>
+          Custom RTSP path (overrides --stream), e.g., /Bfy... from UniFi Protect
+      --rtsp-auth <rtsp-auth>
+          RTSP auth mode: auto|basic|digest [default: auto]
+      --rtsp-transport <rtsp-transport>
+          RTSP transport: tcp|udp [default: tcp]
+  -s, --seconds <seconds>
+          Recording duration in seconds (alternative to --dur)
+      --slack-channel <slack-channel>
+          Slack channel or user to upload to (e.g. #general, @alice)
+      --slack-message <slack-message>
+          Optional message to post with the file
+      --slack-token <slack-token>
+          Slack API token (overrides config and SLACK_TOKEN env var)
+      --stream <stream>
+          RTSP path segment (stream1 or stream2); ignored if --path is set
+      --timeout <timeout>
+          Timeout for capture [default: 30s]
+  -h, --help
+          Print help

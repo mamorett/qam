@@ -107,19 +107,38 @@ impl FromStr for ClientMode {
     }
 }
 
-/// Normalizes CLI boolean arguments so `--flag=true`, `--flag=false`, `--flag=1`, `--flag=0`
-/// are cleanly handled before or during CLI parsing.
-pub fn normalize_bool_flag_args<I, T>(args: I) -> Vec<String>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<std::ffi::OsString>,
-{
-    let mut out = Vec::new();
-    for arg in args {
-        let s = arg.into().to_string_lossy().into_owned();
-        out.push(s);
+/// Parses a boolean flag value, supporting "true", "false", "1", "0", "t", "f", "yes", "no".
+pub fn parse_bool_flag(val: &str) -> Result<bool, String> {
+    match val.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" | "t" | "yes" | "y" => Ok(true),
+        "false" | "0" | "f" | "no" | "n" => Ok(false),
+        other => Err(format!("invalid boolean value {other:?}")),
     }
-    out
+}
+
+/// Creates a clap boolean flag that supports `--flag`, `--flag=true`, `--flag=false`, `--flag=1`, `--flag=0`.
+pub fn bool_arg(name: &'static str, help: &'static str) -> clap::Arg {
+    clap::Arg::new(name)
+        .long(name)
+        .help(help)
+        .action(clap::ArgAction::Set)
+        .num_args(0..=1)
+        .default_missing_value("true")
+        .require_equals(true)
+        .value_parser(parse_bool_flag)
+}
+
+/// Creates a trailing ignored positional arg for subcommands that silently ignore extra positionals.
+pub fn trailing_ignored_arg() -> clap::Arg {
+    clap::Arg::new("trailing_ignored")
+        .num_args(0..)
+        .trailing_var_arg(true)
+        .hide(true)
+}
+
+/// Parses a duration string in Go syntax (e.g., 5s, 10m, 500ms).
+pub fn parse_duration_flag(val: &str) -> Result<std::time::Duration, String> {
+    crate::timefmt::parse_go_duration(val).map_err(|_| format!("invalid duration {val:?}"))
 }
 
 #[cfg(test)]
@@ -155,5 +174,29 @@ mod tests {
             assert_eq!(got_ok, ok, "transport_flag({input:?}) ok");
             assert_eq!(got, expect, "transport_flag({input:?}) val");
         }
+    }
+
+    #[test]
+    fn test_parse_bool_flag() {
+        assert_eq!(parse_bool_flag("true"), Ok(true));
+        assert_eq!(parse_bool_flag("1"), Ok(true));
+        assert_eq!(parse_bool_flag("t"), Ok(true));
+        assert_eq!(parse_bool_flag("false"), Ok(false));
+        assert_eq!(parse_bool_flag("0"), Ok(false));
+        assert_eq!(parse_bool_flag("f"), Ok(false));
+        assert!(parse_bool_flag("invalid").is_err());
+    }
+
+    #[test]
+    fn test_parse_duration_flag() {
+        assert_eq!(
+            parse_duration_flag("10s"),
+            Ok(std::time::Duration::from_secs(10))
+        );
+        assert_eq!(
+            parse_duration_flag("500ms"),
+            Ok(std::time::Duration::from_millis(500))
+        );
+        assert!(parse_duration_flag("invalid").is_err());
     }
 }

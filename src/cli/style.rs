@@ -16,6 +16,10 @@ impl Styler {
         Self { plain: true }
     }
 
+    pub fn with_color(enabled: bool) -> Self {
+        Self { plain: !enabled }
+    }
+
     pub fn is_color_enabled() -> bool {
         if std::env::var_os("NO_COLOR").is_some() {
             return false;
