@@ -253,7 +253,11 @@ async fn test_watch_action_env_vars() {
     let out_file = out_dir.path().join("env_vars.txt");
     let out_str = out_file.to_str().unwrap();
 
-    let action = format!("echo $CAMSNAP_CAMERA,$CAMSNAP_SCORE,$QAM_CAMERA,$QAM_SCORE > {out_str}");
+    let action = if cfg!(windows) {
+        format!("echo %CAMSNAP_CAMERA%,%CAMSNAP_SCORE%,%QAM_CAMERA%,%QAM_SCORE% > {out_str}")
+    } else {
+        format!("echo $CAMSNAP_CAMERA,$CAMSNAP_SCORE,$QAM_CAMERA,$QAM_SCORE > {out_str}")
+    };
 
     let mut cmd = Command::cargo_bin("qam").unwrap();
     cmd.arg("--config").arg(&cfg_path).args([
