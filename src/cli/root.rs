@@ -579,13 +579,49 @@ where
                 return Err(QamError::Usage("shell required for completion".into()));
             }
         },
+        Some(("slack", sub)) => match sub.subcommand() {
+            Some(("set", set_sub)) => {
+                let token = set_sub
+                    .get_one::<String>("token")
+                    .cloned()
+                    .unwrap_or_default();
+                let channel = set_sub
+                    .get_one::<String>("channel")
+                    .cloned()
+                    .unwrap_or_default();
+                crate::cli::slack_cmd::execute_set(&token, &channel, config_path)?;
+            }
+            Some(("test", test_sub)) => {
+                let file = test_sub
+                    .get_one::<String>("file")
+                    .cloned()
+                    .unwrap_or_default();
+                let channel = test_sub
+                    .get_one::<String>("channel")
+                    .cloned()
+                    .unwrap_or_default();
+                let message = test_sub
+                    .get_one::<String>("message")
+                    .cloned()
+                    .unwrap_or_default();
+                crate::cli::slack_cmd::execute_test(
+                    std::path::Path::new(&file),
+                    &channel,
+                    &message,
+                    config_path,
+                )
+                .await?;
+            }
+            _ => {
+                return Err(QamError::Usage("subcommand required for slack".into()));
+            }
+        },
         Some(("snap", _))
         | Some(("clip", _))
         | Some(("audio", _))
         | Some(("discover", _))
         | Some(("watch", _))
-        | Some(("doctor", _))
-        | Some(("slack", _)) => {
+        | Some(("doctor", _)) => {
             return Err(QamError::Usage("not implemented".into()));
         }
         _ => {

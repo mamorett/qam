@@ -110,4 +110,4 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`slackcmd.go` + `slack.go`|`qam slack channels` (`--types`, `--limit`, `--token`, `--api-url`, `--include-archived`): paginate `conversations.list`, sort by name, print `<id>\t#<name>\t<type>` or JSON. `qam slack test` (`--channel`, `--message`, `--thread-ts`, `--token`, `--api-url`, `--dry-run`; rejects extra positional args): post via `chat.postMessage`, print `ok` or JSON. Token resolved from `--token` -> `SLACK_BOT_TOKEN` -> `SLACK_TOKEN`. Upload flow (`files.getUploadURLExternal` -> POST raw bytes -> `files.completeUploadExternal`) used by `snap`/`clip`/`audio`/`watch`|`src/slack.rs`, `src/cli/slack_cmd.rs`|`tests/cli_slack.rs`|
+|[x]|`slackcmd.go` + `slack.go`|`qam slack set --token --channel`, `qam slack test <file> [--channel] [--message]`. Channel resolution with pagination. Token & channel precedence. 3-step file upload flow (`files.getUploadURLExternal` -> POST raw bytes -> `files.completeUploadExternal`)|`src/slack.rs`, `src/cli/slack_cmd.rs`|`tests/cli_slack.rs`|

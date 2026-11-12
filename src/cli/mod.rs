@@ -4,5 +4,6 @@ pub mod flags;
 pub mod list;
 pub mod resolve;
 pub mod root;
+pub mod slack_cmd;
 pub mod style;
 pub mod version;

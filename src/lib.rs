@@ -2,6 +2,7 @@ pub mod cli;
 pub mod config;
 pub mod errors;
 pub mod rtsp_url;
+pub mod slack;
 pub mod timefmt;
 pub mod version;
 
