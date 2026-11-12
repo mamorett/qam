@@ -41,7 +41,17 @@ pub async fn capture_snapshot(opts: SnapshotOptions<'_>) -> Result<(), QamError>
     let deadline = tokio::time::Instant::now() + opts.timeout;
 
     while tokio::time::Instant::now() < deadline {
-        let frame_opt = session.next_frame().await?;
+        let frame_fut = session.next_frame();
+        let frame_opt = tokio::select! {
+            _ = crate::signals::wait_for_shutdown() => {
+                session.teardown().await;
+                if opts.out_path != "-" {
+                    let _ = std::fs::remove_file(opts.out_path);
+                }
+                return Err(QamError::Interrupted(130));
+            }
+            res = frame_fut => res?,
+        };
         let Some(frame) = frame_opt else {
             break;
         };

@@ -77,20 +77,31 @@ async fn record_video_clip(opts: &ClipRecordOptions<'_>, tmp_path: &Path) -> Res
         .ok_or_else(|| QamError::Media("no video stream found in RTSP presentation".into()))?;
 
     let mut decoder = VideoDecoder::new(video_codec)?;
-    let mut muxer = None;
+    let mut muxer: Option<Muxer<std::io::BufWriter<std::fs::File>>> = None;
     let mut last_ts = 0u64;
 
     let start_time = tokio::time::Instant::now();
     let deadline = start_time + opts.duration;
 
     while tokio::time::Instant::now() < deadline {
-        let frame_opt = match session.next_frame().await {
-            Ok(f) => f,
-            Err(e) => {
-                if muxer.is_some() {
-                    break;
-                } else {
-                    return Err(e);
+        let frame_fut = session.next_frame();
+        let frame_opt = tokio::select! {
+            _ = crate::signals::wait_for_shutdown() => {
+                session.teardown().await;
+                if let Some(ref mut m) = muxer {
+                    let _ = m.finalize();
+                    let _ = std::fs::copy(tmp_path, opts.out_path);
+                }
+                return Err(QamError::Interrupted(130));
+            }
+            res = frame_fut => match res {
+                Ok(f) => f,
+                Err(e) => {
+                    if muxer.is_some() {
+                        break;
+                    } else {
+                        return Err(e);
+                    }
                 }
             }
         };
@@ -178,13 +189,24 @@ async fn record_audio_stream(
     let deadline = start_time + opts.duration;
 
     while tokio::time::Instant::now() < deadline {
-        let frame_opt = match session.next_frame().await {
-            Ok(f) => f,
-            Err(e) => {
+        let frame_fut = session.next_frame();
+        let frame_opt = tokio::select! {
+            _ = crate::signals::wait_for_shutdown() => {
+                session.teardown().await;
                 if !pcm_samples.is_empty() {
-                    break;
-                } else {
-                    return Err(e);
+                    let _ = write_wav_s16le(tmp_path, &pcm_samples, clock_rate, 1);
+                    let _ = std::fs::copy(tmp_path, opts.out_path);
+                }
+                return Err(QamError::Interrupted(130));
+            }
+            res = frame_fut => match res {
+                Ok(f) => f,
+                Err(e) => {
+                    if !pcm_samples.is_empty() {
+                        break;
+                    } else {
+                        return Err(e);
+                    }
                 }
             }
         };

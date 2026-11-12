@@ -511,6 +511,8 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    crate::signals::init_signals();
+
     let args_vec: Vec<std::ffi::OsString> = args.into_iter().map(|a| a.into()).collect();
     let is_color = Styler::is_color_enabled();
 

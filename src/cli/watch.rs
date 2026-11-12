@@ -212,13 +212,21 @@ pub async fn run_watch(args: WatchArgs) -> Result<(), QamError> {
         }
 
         let frame_fut = session.next_frame();
-        let frame_res = if let Some(dl) = deadline {
-            match tokio::time::timeout_at(dl, frame_fut).await {
-                Ok(res) => res,
-                Err(_) => break, // Runtime expired
+        let frame_res = tokio::select! {
+            _ = crate::signals::wait_for_shutdown() => {
+                let _ = session.teardown().await;
+                return Err(QamError::Interrupted(130));
             }
-        } else {
-            frame_fut.await
+            res = async {
+                if let Some(dl) = deadline {
+                    match tokio::time::timeout_at(dl, frame_fut).await {
+                        Ok(res) => res,
+                        Err(_) => Ok(None),
+                    }
+                } else {
+                    frame_fut.await
+                }
+            } => res,
         };
 
         let frame = match frame_res {
