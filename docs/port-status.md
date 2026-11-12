@@ -98,7 +98,7 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`discover.go` + `discovery.go`|Flags: `--timeout` (`3s`, falls back to global `--timeout` if not changed and global changed), `--info` (`false`), `--probe` (`false`), `--probe-timeout` (`2s`), `--user`, `--pass`. Send ONVIF WS-Discovery UDP multicast probe to `239.255.255.250:3702`, parse `XAddrs`, deduplicate, sort; if `--info`, POST `GetDeviceInformation` SOAP (WS-Security UsernameToken digest first, HTTP Basic fallback on 401); if `--probe`, test TCP port `554` on each discovered host; format output table / `--json`|`src/discovery/mod.rs`, `src/discovery/info.rs`, `src/cli/discover.rs`|`tests/cli_discover.rs`|
+|[x]|`discover.go` + `discovery.go`|WS-Discovery probe to `239.255.255.250:3702`, parse `XAddrs`, deduplicate, print host and suggested `add` command; `--timeout` (default 3 s); `--info` attempts GetDeviceInformation with WS-Security digest and Basic fallback using config credentials|`src/discovery/mod.rs`, `src/discovery/info.rs`, `src/cli/discover.rs`|`tests/cli_discover.rs`|
 
 ### `doctor` (`internal/cli/doctor.go` + `internal/rtspclient/client.go`)
 

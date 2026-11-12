@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod config;
+pub mod discovery;
 pub mod errors;
 pub mod rtsp_url;
 pub mod slack;

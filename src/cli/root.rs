@@ -616,11 +616,18 @@ where
                 return Err(QamError::Usage("subcommand required for slack".into()));
             }
         },
-        Some(("snap", _))
-        | Some(("clip", _))
-        | Some(("audio", _))
-        | Some(("discover", _))
-        | Some(("watch", _))
+        Some(("discover", sub)) => {
+            let timeout_str = sub
+                .get_one::<String>("timeout")
+                .cloned()
+                .unwrap_or_else(|| "3s".to_string());
+            let timeout = crate::timefmt::parse_go_duration(&timeout_str)
+                .map_err(|e| QamError::Usage(format!("invalid timeout: {e}")))?;
+            let info = *sub.get_one::<bool>("info").unwrap_or(&false);
+
+            crate::cli::discover::execute(timeout, info, config_path).await?;
+        }
+        Some(("snap", _)) | Some(("clip", _)) | Some(("audio", _)) | Some(("watch", _))
         | Some(("doctor", _)) => {
             return Err(QamError::Usage("not implemented".into()));
         }
