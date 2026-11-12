@@ -1,3 +1,12 @@
 # Allowlist for the CI no-ffmpeg guard (matches that intentionally explain
 # compatibility with legacy ffmpeg behavior or scene-score equivalence).
 src/media/scene.rs:.*lavfi\.scene_score
+src/media/scene.rs:.*test_scene_detector_against_ffmpeg_fixture
+src/media/image_out.rs:.*In camsnap (ffmpeg)
+src/cli/snap.rs:.*RTSP client: ffmpeg
+src/cli/doctor.rs:.*no ffmpeg required
+src/cli/flags.rs:.*"ffmpeg" => Ok(ClientMode::Standard)
+src/cli/root.rs:.*RTSP client.*ffmpeg
+src/cli/root.rs:.*\.default_value("ffmpeg")
+tests/snapshots/cli_root.*ffmpeg
+tests/cli_.*ffmpeg
