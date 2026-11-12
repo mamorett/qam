@@ -174,6 +174,66 @@ fn format_subunit(total_nanos: u128, unit_nanos: u128, suffix: &str) -> String {
     }
 }
 
+/// Formats a `chrono::DateTime<Tz>` in Go's `time.RFC3339Nano` format.
+/// In UTC, this ends in `Z`. With an offset, it ends in `±HH:MM`. Trailing zeros in fractional seconds are stripped.
+/// If fractional seconds are zero, the dot is omitted.
+pub fn rfc3339_nano<Tz>(dt: chrono::DateTime<Tz>) -> String
+where
+    Tz: chrono::TimeZone,
+    Tz::Offset: std::fmt::Display,
+{
+    use chrono::{Offset, Timelike};
+    let base = dt.format("%Y-%m-%dT%H:%M:%S").to_string();
+    let offset_secs = dt.offset().fix().local_minus_utc();
+    let suffix = if offset_secs == 0 {
+        "Z".to_string()
+    } else {
+        let sign = if offset_secs < 0 { '-' } else { '+' };
+        let abs = offset_secs.unsigned_abs();
+        let hours = abs / 3600;
+        let mins = (abs % 3600) / 60;
+        format!("{sign}{hours:02}:{mins:02}")
+    };
+    let nanos = dt.nanosecond();
+    if nanos == 0 {
+        format!("{base}{suffix}")
+    } else {
+        let mut frac = format!("{nanos:09}");
+        while frac.ends_with('0') {
+            frac.pop();
+        }
+        format!("{base}.{frac}{suffix}")
+    }
+}
+
+/// Formats a string with Go's `%q` quoting syntax.
+pub fn go_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c.is_control() => {
+                let code = c as u32;
+                if code < 256 {
+                    use std::fmt::Write;
+                    let _ = write!(out, "\\x{:02x}", code);
+                } else {
+                    use std::fmt::Write;
+                    let _ = write!(out, "\\u{:04x}", code);
+                }
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 pub mod serde_duration {
     use super::{format_go_duration, parse_go_duration};
     use serde::{Deserialize, Deserializer, Serializer, de};
@@ -222,6 +282,7 @@ pub mod serde_duration {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Timelike;
     use proptest::prelude::*;
 
     #[test]
@@ -230,6 +291,10 @@ mod tests {
         assert_eq!(parse_go_duration("0s").unwrap(), Duration::ZERO);
         assert_eq!(parse_go_duration("5s").unwrap(), Duration::from_secs(5));
         assert_eq!(parse_go_duration("1m30s").unwrap(), Duration::from_secs(90));
+        assert_eq!(
+            parse_go_duration("10ms").unwrap(),
+            Duration::from_millis(10)
+        );
         assert_eq!(
             parse_go_duration("500ms").unwrap(),
             Duration::from_millis(500)
@@ -270,12 +335,46 @@ mod tests {
         assert!(parse_go_duration("").is_err());
         assert!(parse_go_duration("abc").is_err());
         assert!(parse_go_duration("10").is_err());
+        assert!(parse_go_duration("1x").is_err());
         assert!(parse_go_duration("10days").is_err());
+        assert!(parse_go_duration("-1s").is_err());
         assert!(parse_go_duration("-5s").is_err());
+        assert_eq!(
+            parse_go_duration_signed_nanos("-1s").unwrap(),
+            -1_000_000_000
+        );
         assert_eq!(
             parse_go_duration_signed_nanos("-5s").unwrap(),
             -5_000_000_000
         );
+    }
+
+    #[test]
+    fn test_rfc3339_nano() {
+        use chrono::{TimeZone, Utc};
+        let dt0 = Utc.with_ymd_and_hms(2026, 11, 12, 12, 0, 0).unwrap();
+        assert_eq!(rfc3339_nano(dt0), "2026-11-12T12:00:00Z");
+
+        let dt1 = dt0.with_nanosecond(123450000).unwrap();
+        assert_eq!(rfc3339_nano(dt1), "2026-11-12T12:00:00.12345Z");
+
+        let dt2 = dt0.with_nanosecond(987654321).unwrap();
+        assert_eq!(rfc3339_nano(dt2), "2026-11-12T12:00:00.987654321Z");
+
+        let offset = chrono::FixedOffset::east_opt(3600).unwrap();
+        let dt_offset = dt0
+            .with_timezone(&offset)
+            .with_nanosecond(500000000)
+            .unwrap();
+        assert_eq!(rfc3339_nano(dt_offset), "2026-11-12T13:00:00.5+01:00");
+    }
+
+    #[test]
+    fn test_go_quote() {
+        assert_eq!(go_quote("hello"), "\"hello\"");
+        assert_eq!(go_quote("hello \"world\""), "\"hello \\\"world\\\"\"");
+        assert_eq!(go_quote("line1\nline2\t"), "\"line1\\nline2\\t\"");
+        assert_eq!(go_quote(""), "\"\"");
     }
 
     proptest! {

@@ -1,3 +1,8 @@
+pub mod cli;
+pub mod config;
+pub mod errors;
+pub mod rtsp_url;
+pub mod timefmt;
 pub mod version;
 
 /// Runs the CLI with the given command-line arguments.

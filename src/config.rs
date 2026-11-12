@@ -20,6 +20,15 @@ fn is_false(v: &bool) -> bool {
     !*v
 }
 
+pub(crate) fn deserialize_null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + serde::Deserialize<'de>,
+{
+    let opt = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Defaults {
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -149,11 +158,15 @@ impl Camera {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_as_default")]
     pub defaults: Defaults,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_as_default")]
     pub cameras: Vec<Camera>,
-    #[serde(default, skip_serializing_if = "SlackConfig::is_empty")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_null_as_default",
+        skip_serializing_if = "SlackConfig::is_empty"
+    )]
     pub slack: SlackConfig,
 }
 
@@ -448,5 +461,19 @@ cameras:
         save_to_path(&path, &cfg).unwrap();
         let reloaded = load_from_path(&path).unwrap();
         assert_eq!(reloaded, cfg);
+    }
+
+    #[test]
+    fn cameras_null_and_unknown_keys() {
+        let yaml = r#"
+defaults:
+  rtsp_transport: tcp
+cameras: null
+unknown_field: true
+"#;
+        let mut cfg: Config = serde_yaml::from_str(yaml).unwrap();
+        cfg.normalize();
+        assert!(cfg.cameras.is_empty());
+        assert_eq!(cfg.defaults.rtsp_transport, "tcp");
     }
 }

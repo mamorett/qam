@@ -12,36 +12,36 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 |[ ]|`root.go:normalizeBoolFlagArgs`|Support `--flag=true`, `--flag=false`, `--flag=1`, `--flag=0` on boolean flags (`--overwrite`, `--audio`, `--with-audio`, `--debug`, `--json`, `--no-color`, `--info`, `--probe`, `--dry-run`, `--keep`)|`src/cli/flags.rs`|`tests/cli_root.rs::bool_equals_syntax`|
 |[ ]|`root.go:SilenceUsage/Errors`|Do not print usage on runtime errors; print single `Error: <msg>` line to `stderr` (matching Go `cmd.PrintErrln("Error:", err)`)|`src/main.rs`|`tests/cli_root.rs`|
 |[ ]|`root.go:argsIgnoreRemaining`|All subcommands except `slack test` ignore unexpected positional args|`src/cli/mod.rs`|`tests/cli_root.rs`|
-|[ ]|`internal/cli/color.go`|Color disabled if `--no-color`, `NO_COLOR != ""`, `TERM == "dumb"`, or stdout is not a TTY|`src/cli/style.rs`|`src/cli/style.rs` unit tests|
+|[x]|`internal/cli/color.go`|Color disabled if `--no-color`, `NO_COLOR != ""`, `TERM == "dumb"`, or stdout is not a TTY|`src/cli/style.rs`|`src/cli/style.rs` unit tests|
 |[ ]|`root.go`|Shell completions (`completion bash\|zsh\|fish\|powershell`) + `--version` / `-v` flag on root|`src/cli/completion.rs`|`tests/cli_root.rs`|
 
 ## 3.2 Configuration (`~/.config/qam/config.yaml` with fallback to `~/.config/camsnap/config.yaml`)
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`internal/config/config.go:DefaultPath`|`$XDG_CONFIG_HOME/qam/config.yaml` else `~/.config/qam/config.yaml` (fallback to `camsnap/config.yaml` on load if `qam/config.yaml` is absent)|`src/config.rs`|`src/config.rs::tests::default_path_*`|
-|[ ]|`config.go:Load`|Missing file returns empty `Config{}` (not error); trims fields; sets default `port=554`, `scheme=rtsp`|`src/config.rs`|`src/config.rs::tests::load_missing`|
-|[ ]|`config.go:Save`|Creates dir `0700`, writes file with `0600` perms (Unix), normalizes defaults before marshaling|`src/config.rs`|`src/config.rs::tests::save_permissions`|
-|[ ]|`config.go:UpsertCamera`|Case-insensitive name match; updates in-place or appends|`src/config.rs`|`src/config.rs::tests::upsert_*`|
-|[ ]|`config.go:FindCamera`|Case-insensitive lookup by name|`src/config.rs`|`src/config.rs::tests::find_*`|
-|[ ]|`Camera` YAML schema|Fields: `name`, `host`, `port,omitempty`, `user,omitempty`, `pass,omitempty`, `path,omitempty`, `scheme,omitempty`, `url,omitempty`, `rtsp_transport,omitempty`, `rtsp_auth,omitempty`, `threshold,omitempty`, `clip_duration,omitempty`, `cooldown,omitempty` (`duration` serialized as Go duration string e.g. `5s` or `0s`)|`src/config.rs`|`src/config.rs::tests::yaml_roundtrip_go_compat`|
-|[ ]|`Defaults` YAML schema|`rtsp_transport`, `rtsp_auth`, `timeout`, `threshold`, `clip_duration`, `cooldown`|`src/config.rs`|`src/config.rs::tests::yaml_roundtrip_go_compat`|
+|[x]|`internal/config/config.go:DefaultPath`|`$XDG_CONFIG_HOME/qam/config.yaml` else `~/.config/qam/config.yaml` (fallback to `camsnap/config.yaml` on load if `qam/config.yaml` is absent)|`src/config.rs`|`src/config.rs::tests::default_path_*`|
+|[x]|`config.go:Load`|Missing file returns empty `Config{}` (not error); trims fields; sets default `port=554`, `scheme=rtsp`|`src/config.rs`|`src/config.rs::tests::load_missing`|
+|[x]|`config.go:Save`|Creates dir `0700`, writes file with `0600` perms (Unix), normalizes defaults before marshaling|`src/config.rs`|`src/config.rs::tests::save_permissions`|
+|[x]|`config.go:UpsertCamera`|Case-insensitive name match; updates in-place or appends|`src/config.rs`|`src/config.rs::tests::upsert_*`|
+|[x]|`config.go:FindCamera`|Case-insensitive lookup by name|`src/config.rs`|`src/config.rs::tests::find_*`|
+|[x]|`Camera` YAML schema|Fields: `name`, `host`, `port,omitempty`, `user,omitempty`, `pass,omitempty`, `path,omitempty`, `scheme,omitempty`, `url,omitempty`, `rtsp_transport,omitempty`, `rtsp_auth,omitempty`, `threshold,omitempty`, `clip_duration,omitempty`, `cooldown,omitempty` (`duration` serialized as Go duration string e.g. `5s` or `0s`)|`src/config.rs`|`src/config.rs::tests::yaml_roundtrip_go_compat`|
+|[x]|`Defaults` YAML schema|`rtsp_transport`, `rtsp_auth`, `timeout`, `threshold`, `clip_duration`, `cooldown`|`src/config.rs`|`src/config.rs::tests::yaml_roundtrip_go_compat`|
 
 ## 3.3 RTSP URL Building & Redaction
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`internal/rtsp/url.go:BuildURL`|If `cam.URL != ""`, use it; if it lacks userinfo and `cam.User != ""`, inject URL-escaped `user[:pass]@`; else build `<scheme>://[user[:pass]@]host[:port][/path]`; reject empty host and path without host|`src/rtsp_url.rs`|`src/rtsp_url.rs::tests::build_url_*`|
-|[ ]|`url.go:RedactURL`|Replace password with `***`; fallback string replacement when `url::Url::parse` fails|`src/rtsp_url.rs`|`src/rtsp_url.rs::tests::redact_url_*`|
+|[x]|`internal/rtsp/url.go:BuildURL`|If `cam.URL != ""`, use it; if it lacks userinfo and `cam.User != ""`, inject URL-escaped `user[:pass]@`; else build `<scheme>://[user[:pass]@]host[:port][/path]`; reject empty host and path without host|`src/rtsp_url.rs`|`src/rtsp_url.rs::tests::build_url_*`|
+|[x]|`url.go:RedactURL`|Replace password with `***`; fallback string replacement when `url::Url::parse` fails|`src/rtsp_url.rs`|`src/rtsp_url.rs::tests::redact_url_*`|
 
 ## 3.4 Precedence & Option Resolution
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`helpers.go:resolveCamera`|`--camera <name>` \| `--url <url>` \| `--host <host>` (mutually exclusive; at least one required); `--user/--pass/--port/--path/--scheme` override stored camera fields|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::*`|
-|[ ]|`helpers.go:resolveRTSPTransport`|Flag (if explicitly changed) > `cam.RTSPTransport` > `cfg.Defaults.RTSPTransport` > flag default (`tcp`)|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::transport_precedence`|
-|[ ]|`helpers.go:resolveRTSPAuth`|Flag (if explicitly changed) > `cam.RTSPAuth` > `cfg.Defaults.RTSPAuth` > flag default (`auto`); normalize & validate `auto\|basic\|digest`|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::auth_precedence`|
-|[ ]|`helpers.go:resolveTimeout`|Flag (if explicitly changed) > `cfg.Defaults.Timeout` (if `>0`) > flag default (`10s`)|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::timeout_precedence`|
+|[x]|`helpers.go:resolveCamera`|`--camera <name>` \| `--url <url>` \| `--host <host>` (mutually exclusive; at least one required); `--user/--pass/--port/--path/--scheme` override stored camera fields|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::*`|
+|[x]|`helpers.go:resolveRTSPTransport`|Flag (if explicitly changed) > `cam.RTSPTransport` > `cfg.Defaults.RTSPTransport` > flag default (`tcp`)|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::transport_precedence`|
+|[x]|`helpers.go:resolveRTSPAuth`|Flag (if explicitly changed) > `cam.RTSPAuth` > `cfg.Defaults.RTSPAuth` > flag default (`auto`); normalize & validate `auto\|basic\|digest`|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::auth_precedence`|
+|[x]|`helpers.go:resolveTimeout`|Flag (if explicitly changed) > `cfg.Defaults.Timeout` (if `>0`) > flag default (`10s`)|`src/cli/resolve.rs`|`src/cli/resolve.rs::tests::timeout_precedence`|
 |[ ]|`watch.go` resolution|`threshold`, `clip_duration`, `cooldown`: Flag (if changed) > `cam.*` > `cfg.Defaults.*` > flag default (`0.25`, `0s`, `10s`); reject `threshold <= 0 \|\| threshold >= 1`|`src/cli/watch.rs`|`src/cli/watch.rs::tests::*`|
 
 ## 3.5 Subcommands
@@ -63,7 +63,7 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`version.go`|Prints version string (`0.4.0`, overrideable at build time via `QAM_VERSION` or `CAMSNAP_VERSION` env in `build.rs`)|`src/version.rs`|`tests/cli_root.rs`|
+|[x]|`version.go`|Prints version string (`0.4.0`, overrideable at build time via `QAM_VERSION` or `CAMSNAP_VERSION` env in `build.rs`)|`src/version.rs`|`tests/cli_root.rs`|
 
 ### `snap` (`internal/cli/snap.go`)
 
