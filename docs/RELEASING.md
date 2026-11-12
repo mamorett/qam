@@ -1,5 +1,9 @@
 # Releasing `qam`
 
+## Toolchain Requirements
+
+- **Rust & Cargo**: >= 1.89.0 (pinned in `rust-toolchain.toml`).
+
 ## Release Process
 
 1. **Verify Quality Gates**:

@@ -16,6 +16,20 @@ Rewritten in 100% pure Rust: **zero external dependencies, zero ffmpeg, zero Ope
 
 ## Installation
 
+### Prerequisites
+
+- **Rust & Cargo**: Version **1.89.0** or newer is required (Rust 2024 edition support).
+  Verify your installed version:
+  ```sh
+  rustc --version
+  cargo --version
+  ```
+  If using `rustup`, update your toolchain:
+  ```sh
+  rustup update stable
+  ```
+- **C/C++ Compiler**: A standard C/C++ compiler (`clang` or `gcc`) to compile the embedded pure-C/C++ OpenH264 decoder. No external multimedia libraries (no FFmpeg, no libav*, no OpenSSL) are needed.
+
 ### From Source
 
 ```sh

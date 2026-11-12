@@ -48,6 +48,7 @@ This document records the Phase 0 spike findings and architecture decisions for 
 
 ## ADR-005: Cross-Compilation & Toolchain Matrix
 
+- **Minimum Supported Rust Version (MSRV)**: Rust 1.89.0+ / Cargo 1.89.0+ (pinned in `rust-toolchain.toml` and specified via `rust-version = "1.89"` in `Cargo.toml`). Required for Rust 2024 edition ecosystem support and portable SIMD acceleration crates (`wide`, `safe_arch`).
 - **Target Matrix**:
   - `aarch64-apple-darwin` (native macOS ARM64)
   - `x86_64-apple-darwin` (macOS x86_64)

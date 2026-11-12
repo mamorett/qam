@@ -5,6 +5,7 @@ All notable changes to `qam` will be documented in this file.
 ## [0.4.0] - 2026-11-12
 
 ### Rewritten in 100% Pure Rust (`qam`)
+- **Toolchain**: Requires Rust 1.89.0+ and Cargo 1.89.0+ (Rust 2024 edition).
 - **Zero Runtime Dependencies**: Completely eliminated all runtime and build-time dependencies on `ffmpeg`, `ffprobe`, `libav*`, and OpenSSL. Self-contained single binary with statically compiled OpenH264, pure-Rust H.265 (`rust_h265`), native MP4 muxer, and `rustls`.
 - **RTSP Engine**: Replaced `gortsplib`/`ffmpeg` with pure-Rust `retina` RTSP engine supporting interleaved TCP, RTP over UDP, and `rtsps://` over TLS with self-signed certificate leniency.
 - **Decoding & Image Encoding**: Hardware-free software decode for H.264, H.265, and MJPEG. Atomic image file output supporting JPEG, PNG, and WebP.
