@@ -166,6 +166,7 @@ fn test_help_snapshots() {
         cmd.args(&args);
         let assert = cmd.assert().success();
         let out = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+        let out = out.replace("qam.exe", "qam");
 
         let snap_name = if args.len() == 1 {
             args[0].trim_start_matches('-').to_string()
