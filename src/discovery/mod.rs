@@ -158,12 +158,17 @@ pub async fn discover(
     let _ = socket.set_broadcast(true);
 
     if let Err(e) = socket.send_to(probe_xml.as_bytes(), dest).await {
-        let is_unreachable =
-            matches!(
-                e.kind(),
-                std::io::ErrorKind::HostUnreachable | std::io::ErrorKind::NetworkUnreachable
-            ) || matches!(e.raw_os_error(), Some(51 | 65 | 101 | 113 | 10051 | 10065));
-        if target_addr.is_none() && is_unreachable {
+        let is_unreachable = matches!(
+            e.kind(),
+            std::io::ErrorKind::HostUnreachable
+                | std::io::ErrorKind::NetworkUnreachable
+                | std::io::ErrorKind::ConnectionRefused
+                | std::io::ErrorKind::ConnectionReset
+        ) || matches!(
+            e.raw_os_error(),
+            Some(51 | 65 | 101 | 111 | 113 | 10051 | 10054 | 10061 | 10065)
+        );
+        if is_unreachable {
             return Ok(Vec::new());
         }
         return Err(QamError::Discovery(format!("send probe: {e}")));
@@ -194,6 +199,22 @@ pub async fn discover(
                 }
             }
             Ok(Err(e)) => {
+                let is_transient = matches!(
+                    e.kind(),
+                    std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::ConnectionRefused
+                        | std::io::ErrorKind::HostUnreachable
+                        | std::io::ErrorKind::NetworkUnreachable
+                        | std::io::ErrorKind::Interrupted
+                        | std::io::ErrorKind::WouldBlock
+                ) || matches!(
+                    e.raw_os_error(),
+                    Some(51 | 65 | 101 | 111 | 113 | 10051 | 10054 | 10061 | 10065)
+                );
+                if is_transient {
+                    tokio::time::sleep(Duration::from_millis(5)).await;
+                    continue;
+                }
                 return Err(QamError::Discovery(format!("read udp: {e}")));
             }
             Err(_) => {
