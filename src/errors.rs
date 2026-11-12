@@ -45,7 +45,7 @@ pub fn classify_message(s: &str) -> &'static str {
         "network-refused"
     } else if msg.contains("timed out") || msg.contains("timeout") {
         "network-timeout"
-    } else if msg.contains("not found") {
+    } else if msg.contains("not found") || msg.contains("404") {
         "not-found"
     } else {
         "unknown"
