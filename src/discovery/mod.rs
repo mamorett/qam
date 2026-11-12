@@ -155,10 +155,19 @@ pub async fn discover(
     );
     let probe_xml = PROBE_TEMPLATE.replace("%s", &msg_id);
 
-    socket
-        .send_to(probe_xml.as_bytes(), dest)
-        .await
-        .map_err(|e| QamError::Discovery(format!("send probe: {e}")))?;
+    let _ = socket.set_broadcast(true);
+
+    if let Err(e) = socket.send_to(probe_xml.as_bytes(), dest).await {
+        let is_unreachable =
+            matches!(
+                e.kind(),
+                std::io::ErrorKind::HostUnreachable | std::io::ErrorKind::NetworkUnreachable
+            ) || matches!(e.raw_os_error(), Some(51 | 65 | 101 | 113 | 10051 | 10065));
+        if target_addr.is_none() && is_unreachable {
+            return Ok(Vec::new());
+        }
+        return Err(QamError::Discovery(format!("send probe: {e}")));
+    }
 
     let mut devices = Vec::new();
     let mut buf = vec![0u8; 8192];

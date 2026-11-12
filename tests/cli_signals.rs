@@ -1,3 +1,5 @@
+#![cfg(unix)]
+
 use std::fs;
 use std::time::Duration;
 use tempfile::tempdir;
