@@ -41,9 +41,17 @@ pub fn classify_message(s: &str) -> &'static str {
     let msg = s.to_ascii_lowercase();
     if msg.contains("401") || msg.contains("unauthorized") || msg.contains("auth") {
         "auth"
-    } else if msg.contains("connection refused") {
+    } else if msg.contains("connection refused")
+        || msg.contains("actively refused")
+        || msg.contains("10061")
+        || msg.contains("econnrefused")
+    {
         "network-refused"
-    } else if msg.contains("timed out") || msg.contains("timeout") {
+    } else if msg.contains("timed out")
+        || msg.contains("timeout")
+        || msg.contains("10060")
+        || msg.contains("etimedout")
+    {
         "network-timeout"
     } else if msg.contains("not found") || msg.contains("404") {
         "not-found"
@@ -60,7 +68,15 @@ pub fn classify(err: &QamError) -> &'static str {
             std::io::ErrorKind::TimedOut => "network-timeout",
             std::io::ErrorKind::NotFound => "not-found",
             std::io::ErrorKind::PermissionDenied => "auth",
-            _ => classify_message(&err.to_string()),
+            _ => {
+                if let Some(10061) = io_err.raw_os_error() {
+                    return "network-refused";
+                }
+                if let Some(10060) = io_err.raw_os_error() {
+                    return "network-timeout";
+                }
+                classify_message(&err.to_string())
+            }
         },
         _ => classify_message(&err.to_string()),
     }
@@ -91,6 +107,10 @@ mod tests {
             ("401 Unauthorized", "auth"),
             ("Server returned 401 unauthorized", "auth"),
             ("Connection refused", "network-refused"),
+            (
+                "No connection could be made because the target machine actively refused it. (os error 10061)",
+                "network-refused",
+            ),
             ("timed out", "network-timeout"),
             ("not found", "not-found"),
             ("weird message", "unknown"),
