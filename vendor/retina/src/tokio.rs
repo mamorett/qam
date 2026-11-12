@@ -56,9 +56,7 @@ impl rustls::client::danger::ServerCertVerifier for NoCertificateVerification {
     }
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        self.0
-            .signature_verification_algorithms
-            .supported_schemes()
+        self.0.signature_verification_algorithms.supported_schemes()
     }
 }
 
@@ -288,7 +286,8 @@ impl Stream for Connection {
                     match tcp.poll_read_ready(cx) {
                         std::task::Poll::Ready(Ok(())) => {}
                         std::task::Poll::Ready(Err(error)) => {
-                            let pos = this.parser.stream_pos() + this.read_buf.unparsed_len() as u64;
+                            let pos =
+                                this.parser.stream_pos() + this.read_buf.unparsed_len() as u64;
                             return std::task::Poll::Ready(Some(Err(wrap!(
                                 ErrorInt::RtspReadError {
                                     conn_ctx: this.ctx,
@@ -331,7 +330,8 @@ impl Stream for Connection {
                             continue;
                         }
                         Err(error) => {
-                            let pos = this.parser.stream_pos() + this.read_buf.unparsed_len() as u64;
+                            let pos =
+                                this.parser.stream_pos() + this.read_buf.unparsed_len() as u64;
                             return std::task::Poll::Ready(Some(Err(wrap!(
                                 ErrorInt::RtspReadError {
                                     conn_ctx: this.ctx,
@@ -354,11 +354,8 @@ impl Stream for Connection {
                         std::task::Poll::Ready(Ok(())) => {
                             let n = read_buf.filled().len();
                             if n == 0 {
-                                return match try_decode(
-                                    &mut this.parser,
-                                    &mut this.read_buf,
-                                    true,
-                                ) {
+                                return match try_decode(&mut this.parser, &mut this.read_buf, true)
+                                {
                                     Ok(Some(msg)) => std::task::Poll::Ready(Some(Ok(msg))),
                                     Ok(None) => std::task::Poll::Ready(None),
                                     Err(e) => {
@@ -374,7 +371,8 @@ impl Stream for Connection {
                             this.read_buf.advance_end(n);
                         }
                         std::task::Poll::Ready(Err(error)) => {
-                            let pos = this.parser.stream_pos() + this.read_buf.unparsed_len() as u64;
+                            let pos =
+                                this.parser.stream_pos() + this.read_buf.unparsed_len() as u64;
                             return std::task::Poll::Ready(Some(Err(wrap!(
                                 ErrorInt::RtspReadError {
                                     conn_ctx: this.ctx,

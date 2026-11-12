@@ -1341,7 +1341,9 @@ impl RtspConnection {
                             method: req.method().clone(),
                             cseq,
                             status: resp.status_code,
-                            description: "Server requested non-Basic authentication, but Basic was required".into(),
+                            description:
+                                "Server requested non-Basic authentication, but Basic was required"
+                                    .into(),
                         });
                     }
                     AuthPolicy::Digest if !is_digest => {

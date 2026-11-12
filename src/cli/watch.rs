@@ -76,13 +76,7 @@ pub async fn run_watch(args: WatchArgs) -> Result<(), QamError> {
         }
     }
 
-    let cfg = if let Some(p) = args.config.as_deref() {
-        config::load(p)?
-    } else if let Ok(p) = config::default_path() {
-        config::load(p.to_str().unwrap_or_default()).unwrap_or_default()
-    } else {
-        config::Config::default()
-    };
+    let cfg = config::load(args.config.as_deref().unwrap_or(""))?;
 
     let cam = cfg
         .find_camera(&camera_name)

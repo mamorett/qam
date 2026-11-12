@@ -235,7 +235,7 @@ fn test_snap_cli_validations() {
 
     let tmp = tempdir().unwrap();
     let cfg = tmp.path().join("config.yaml");
-    fs::write(&cfg, "cameras: {}\n").unwrap();
+    fs::write(&cfg, "cameras: []\n").unwrap();
 
     let mut cmd_not_found = Command::cargo_bin("qam").unwrap();
     cmd_not_found

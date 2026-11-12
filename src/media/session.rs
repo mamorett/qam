@@ -118,6 +118,7 @@ impl RtspSession {
             .auth_policy(auth_policy)
             .user_agent(format!("qam/{}", crate::version::VERSION))
             .session_group(Arc::clone(&session_group))
+            .session_id(retina::client::SessionIdPolicy::UseFirst)
             .teardown(retina::client::TeardownPolicy::Always);
 
         // Connect and DESCRIBE

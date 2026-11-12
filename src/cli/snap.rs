@@ -6,7 +6,6 @@ use std::time::Duration;
 use crate::cli::flags::{RtspAuth, Transport, parse_bool_flag, parse_duration_flag};
 use crate::cli::resolve::{append_path, append_stream};
 use crate::cli::style::Styler;
-use crate::config::{Config, default_path, load};
 use crate::errors::QamError;
 use crate::media::snapshot::{SnapshotOptions, capture_snapshot};
 use crate::rtsp_url::build_url;
@@ -129,13 +128,7 @@ pub async fn run_snap(
     }
 
     // 4. Load config and find camera
-    let cfg = if let Some(p) = global_config {
-        load(p).unwrap_or_default()
-    } else if let Ok(p) = default_path() {
-        load(p.to_str().unwrap_or_default()).unwrap_or_default()
-    } else {
-        Config::default()
-    };
+    let cfg = crate::config::load(global_config.unwrap_or(""))?;
 
     let mut cam = cfg
         .find_camera(&camera_name)
