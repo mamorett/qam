@@ -820,8 +820,16 @@ where
 
             crate::cli::watch::run_watch(args).await?;
         }
-        Some(("doctor", _)) => {
-            return Err(QamError::Usage("not implemented".into()));
+        Some(("doctor", sub)) => {
+            let probe = *sub.get_one::<bool>("probe").unwrap_or(&false);
+            let args = crate::cli::doctor::DoctorArgs {
+                timeout: sub.get_one::<String>("timeout").cloned(),
+                probe,
+                rtsp_auth: sub.get_one::<String>("rtsp-auth").cloned(),
+                rtsp_transport: sub.get_one::<String>("rtsp-transport").cloned(),
+                config: config_path.map(|s| s.to_string()),
+            };
+            crate::cli::doctor::run_doctor(args).await?;
         }
         _ => {
             // No subcommand invoked: print help

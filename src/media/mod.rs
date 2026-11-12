@@ -3,6 +3,7 @@ pub mod audio;
 pub mod codec;
 pub mod image_out;
 pub mod mux;
+pub mod probe;
 pub mod recorder;
 pub mod scene;
 pub mod session;

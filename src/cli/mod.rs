@@ -3,6 +3,7 @@ pub mod audio;
 pub mod clip;
 pub mod completion;
 pub mod discover;
+pub mod doctor;
 pub mod flags;
 pub mod list;
 pub mod resolve;

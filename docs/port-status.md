@@ -104,7 +104,7 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`doctor.go` + `rtspclient/client.go`|Flags: `--camera/--url/--host/...`, `--probe` (default `true`). Does **not** check for `ffmpeg` on `PATH` (instead reports built-in media engine status / codecs). If no camera configured and no target flags, prints `No cameras configured.` (or `{"cameras":[]}`). For each target camera: DNS lookup, RTSP `DESCRIBE` (plus short stream probe when `--probe`: setup + play + receive 1st packet/frame to verify transport/codec), report stream codecs (`H264`, `H265`, `AAC`, `PCMA`, etc.), classify errors (`401`/`403` auth hint, `404` path hint, timeout transport hint, UDP drop hint); `--json` outputs `DoctorReport` JSON|`src/cli/doctor.rs`, `src/media/probe.rs`|`tests/cli_doctor.rs`|
+|[x]|`doctor.go` + `rtspclient/client.go`|Flags: `--camera/--url/--host/...`, `--probe` (default `true`). Does **not** check for `ffmpeg` on `PATH` (instead reports built-in media engine status / codecs). If no camera configured and no target flags, prints `No cameras configured.` (or `{"cameras":[]}`). For each target camera: DNS lookup, RTSP `DESCRIBE` (plus short stream probe when `--probe`: setup + play + receive 1st packet/frame to verify transport/codec), report stream codecs (`H264`, `H265`, `AAC`, `PCMA`, etc.), classify errors (`401`/`403` auth hint, `404` path hint, timeout transport hint, UDP drop hint); `--json` outputs `DoctorReport` JSON|`src/cli/doctor.rs`, `src/media/probe.rs`|`tests/cli_doctor.rs`|
 
 ### `slack` (`internal/cli/slackcmd.go` + `internal/slack/slack.go`)
 
