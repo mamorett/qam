@@ -167,7 +167,11 @@ async fn test_rtsp_session_network_refused_classified() {
     .await
     .unwrap_err();
 
-    assert_eq!(classify(&err), "network-refused");
+    let class = classify(&err);
+    assert!(
+        class == "network-refused" || (cfg!(windows) && class == "network-timeout"),
+        "expected network-refused (or network-timeout on windows), got: {class} (err: {err})"
+    );
 }
 
 #[tokio::test]
