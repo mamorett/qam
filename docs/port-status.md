@@ -77,15 +77,15 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`clip.go` + `record.go`|Flags: camera flags + `--out` (default temp `qam-*.mp4`; `-` rejected with `stdout output not supported for clip`), `--duration` (default `5s`, must be `>0`), `--audio` (default `false`), `--with-audio` (alias for `--audio`, marks deprecated if both set), `--overwrite` (default `true`), Slack flags|`src/cli/record.rs`|`tests/cli_record.rs`|
-|[ ]|`ffmpeg.go:RecordClip`|Record video (H.264 / H.265 stream-copied into MP4 without re-encoding; MJPEG decoded+encoded or rejected with clear message) for `--duration` starting from first keyframe; if `--audio`: include AAC/Opus directly, or decode G.711/G.726/L16 and transcode or store in MP4; write `+faststart` (`moov` before `mdat` or finalized cleanly); Ctrl-C finalizes trailer and exits `130`|`src/media/recorder.rs`, `src/media/mux/mp4.rs`|`tests/cli_record.rs`|
+|[x]|`clip.go` + `record.go`|Flags: camera flags + `--out` (default temp `qam-*.mp4`; `-` rejected with `stdout output not supported for clip`), `--duration` (default `5s`, must be `>0`), `--audio` (default `false`), `--with-audio` (alias for `--audio`, marks deprecated if both set), `--overwrite` (default `true`), Slack flags|`src/cli/clip.rs`|`tests/cli_record.rs`|
+|[x]|`ffmpeg.go:RecordClip`|Record video (H.264 / H.265 stream-copied into MP4 without re-encoding; MJPEG decoded+encoded or rejected with clear message) for `--duration` starting from first keyframe; if `--audio`: include AAC/Opus directly, or decode G.711/G.726/L16 and transcode or store in MP4; write `+faststart` (`moov` before `mdat` or finalized cleanly); Ctrl-C finalizes trailer and exits `130`|`src/media/recorder.rs`, `src/media/mux/mp4.rs`|`tests/cli_record.rs`|
 
 ### `audio` (`internal/cli/audio.go` + `record.go`)
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`audio.go` + `record.go`|Flags: camera flags + `--out` (default temp `qam-*.wav`; `-` rejected with `stdout output not supported for audio`), `--duration` (default `5s`, must be `>0`), `--overwrite` (default `true`), Slack flags|`src/cli/record.rs`|`tests/cli_record.rs`|
-|[ ]|`ffmpeg.go:RecordAudio`|Output format inferred from `--out` extension: `.wav` -> PCM s16le WAV (`hound`/custom writer); `.aac` / `.m4a` -> ADTS or M4A (copy when source is AAC); `.opus` / `.ogg` -> Ogg Opus (when source is Opus); `.mp4` -> audio-only MP4. If camera has no audio track, return clear error `no audio stream found in RTSP presentation`|`src/media/recorder.rs`, `src/media/mux/wav.rs`|`tests/cli_record.rs`|
+|[x]|`audio.go` + `record.go`|Flags: camera flags + `--out` (default temp `qam-*.wav`; `-` rejected with `stdout output not supported for audio`), `--duration` (default `5s`, must be `>0`), `--overwrite` (default `true`), Slack flags|`src/cli/audio.rs`|`tests/cli_record.rs`|
+|[x]|`ffmpeg.go:RecordAudio`|Output format inferred from `--out` extension: `.wav` -> PCM s16le WAV (`hound`/custom writer); `.aac` / `.m4a` -> ADTS or M4A (copy when source is AAC); `.opus` / `.ogg` -> Ogg Opus (when source is Opus); `.mp4` -> audio-only MP4. If camera has no audio track, return clear error `no audio stream found in RTSP presentation`|`src/media/recorder.rs`, `src/media/mux/wav.rs`|`tests/cli_record.rs`|
 
 ### `watch` (`internal/cli/watch.go`)
 

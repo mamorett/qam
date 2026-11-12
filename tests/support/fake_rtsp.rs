@@ -39,6 +39,7 @@ pub struct FakeRtspConfig {
     pub fault: Fault,
     pub use_tls: bool,
     pub video_h264_frames: Vec<Vec<u8>>,
+    pub audio_pcma_bytes: Vec<u8>,
 }
 
 impl Default for FakeRtspConfig {
@@ -51,6 +52,7 @@ impl Default for FakeRtspConfig {
             fault: Fault::None,
             use_tls: false,
             video_h264_frames: Vec::new(),
+            audio_pcma_bytes: Vec::new(),
         }
     }
 }
@@ -158,6 +160,7 @@ async fn handle_connection(
 ) {
     let mut buf = vec![0u8; 4096];
     let mut interleaved_video_channel: Option<u8> = None;
+    let mut interleaved_audio_channel: Option<u8> = None;
     let mut udp_peer: Option<SocketAddr> = None;
     let seq_counter = AtomicU32::new(1);
 
@@ -297,9 +300,15 @@ async fn handle_connection(
             }
             "SETUP" => {
                 let trans = transport_hdr.unwrap_or_default();
+                let is_audio = req_path.contains("track1");
                 let resp_transport = if trans.contains("interleaved") {
-                    interleaved_video_channel = Some(0);
-                    "RTP/AVP/TCP;unicast;interleaved=0-1"
+                    if is_audio {
+                        interleaved_audio_channel = Some(2);
+                        "RTP/AVP/TCP;unicast;interleaved=2-3"
+                    } else {
+                        interleaved_video_channel = Some(0);
+                        "RTP/AVP/TCP;unicast;interleaved=0-1"
+                    }
                 } else if let Some(idx) = trans.find("client_port=") {
                     // UDP transport: parse client ports
                     let port_part = &trans[idx + 12..];
@@ -334,7 +343,7 @@ async fn handle_connection(
                     "RTSP/1.0 200 OK\r\n\
                      CSeq: {cseq}\r\n\
                      Session: 12345678\r\n\
-                     RTP-Info: url=track0;seq=1;rtptime=1000\r\n\r\n"
+                     RTP-Info: url=track0;seq=1;rtptime=1000,url=track1;seq=1;rtptime=1000\r\n\r\n"
                 );
                 let _ = stream.write_all(resp.as_bytes()).await;
 
@@ -362,6 +371,31 @@ async fn handle_connection(
                                 return;
                             }
                             packets_sent += 1;
+                        }
+                    }
+                }
+
+                // Stream audio packets if present
+                if let Some(ch) = interleaved_audio_channel {
+                    for (chunk_idx, chunk) in config.audio_pcma_bytes.chunks(160).enumerate() {
+                        let mut pkt = Vec::with_capacity(12 + chunk.len());
+                        pkt.push(0x80);
+                        pkt.push(8); // PT = 8 (PCMA)
+                        pkt.extend_from_slice(
+                            &(seq_counter.fetch_add(1, Ordering::SeqCst) as u16).to_be_bytes(),
+                        );
+                        pkt.extend_from_slice(&((chunk_idx * 160) as u32).to_be_bytes());
+                        pkt.extend_from_slice(&0x12345678u32.to_be_bytes());
+                        pkt.extend_from_slice(chunk);
+
+                        let mut packet_bytes = Vec::with_capacity(4 + pkt.len());
+                        packet_bytes.push(b'$');
+                        packet_bytes.push(ch);
+                        packet_bytes.extend_from_slice(&(pkt.len() as u16).to_be_bytes());
+                        packet_bytes.extend_from_slice(&pkt);
+
+                        if stream.write_all(&packet_bytes).await.is_err() {
+                            return;
                         }
                     }
                 } else if let Some(peer) = udp_peer {

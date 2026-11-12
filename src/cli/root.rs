@@ -685,7 +685,107 @@ where
 
             crate::cli::snap::run_snap(args, config_path, false).await?;
         }
-        Some(("clip", _)) | Some(("audio", _)) | Some(("watch", _)) | Some(("doctor", _)) => {
+        Some(("clip", sub)) => {
+            let camera = sub.get_one::<String>("camera").cloned();
+            let mut remaining = sub
+                .get_many::<String>("trailing_ignored")
+                .map(|vals| vals.cloned().collect::<Vec<_>>())
+                .unwrap_or_default();
+            if let Some(pos) = sub.get_one::<String>("camera_pos")
+                && !pos.is_empty()
+            {
+                remaining.insert(0, pos.clone());
+            }
+
+            let dur_explicit =
+                sub.value_source("dur") == Some(clap::parser::ValueSource::CommandLine);
+            let seconds_explicit =
+                sub.value_source("seconds") == Some(clap::parser::ValueSource::CommandLine);
+
+            let args = crate::cli::clip::ClipArgs {
+                camera,
+                out: sub.get_one::<String>("out").cloned(),
+                dur: sub
+                    .get_one::<String>("dur")
+                    .cloned()
+                    .unwrap_or_else(|| "10s".to_string()),
+                seconds: sub.get_one::<i64>("seconds").copied(),
+                timeout: sub
+                    .get_one::<String>("timeout")
+                    .cloned()
+                    .unwrap_or_else(|| "30s".to_string()),
+                rtsp_auth: sub
+                    .get_one::<String>("rtsp-auth")
+                    .cloned()
+                    .unwrap_or_else(|| "auto".to_string()),
+                rtsp_transport: sub
+                    .get_one::<String>("rtsp-transport")
+                    .cloned()
+                    .unwrap_or_else(|| "tcp".to_string()),
+                stream: sub.get_one::<String>("stream").cloned(),
+                path: sub.get_one::<String>("path").cloned(),
+                no_audio: *sub.get_one::<bool>("no-audio").unwrap_or(&false),
+                audio_only: *sub.get_one::<bool>("audio-only").unwrap_or(&false),
+                audio_codec: sub.get_one::<String>("audio-codec").cloned(),
+                overwrite: sub.get_one::<String>("overwrite").cloned(),
+                slack_channel: sub.get_one::<String>("slack-channel").cloned(),
+                slack_token: sub.get_one::<String>("slack-token").cloned(),
+                slack_message: sub.get_one::<String>("slack-message").cloned(),
+                remaining,
+            };
+
+            crate::cli::clip::run_clip(args, config_path, dur_explicit, seconds_explicit).await?;
+        }
+        Some(("audio", sub)) => {
+            let camera = sub.get_one::<String>("camera").cloned();
+            let mut remaining = sub
+                .get_many::<String>("trailing_ignored")
+                .map(|vals| vals.cloned().collect::<Vec<_>>())
+                .unwrap_or_default();
+            if let Some(pos) = sub.get_one::<String>("camera_pos")
+                && !pos.is_empty()
+            {
+                remaining.insert(0, pos.clone());
+            }
+
+            let dur_explicit =
+                sub.value_source("dur") == Some(clap::parser::ValueSource::CommandLine);
+            let seconds_explicit =
+                sub.value_source("seconds") == Some(clap::parser::ValueSource::CommandLine);
+
+            let args = crate::cli::audio::AudioArgs {
+                camera,
+                out: sub.get_one::<String>("out").cloned(),
+                dur: sub
+                    .get_one::<String>("dur")
+                    .cloned()
+                    .unwrap_or_else(|| "10s".to_string()),
+                seconds: sub.get_one::<i64>("seconds").copied(),
+                timeout: sub
+                    .get_one::<String>("timeout")
+                    .cloned()
+                    .unwrap_or_else(|| "30s".to_string()),
+                rtsp_auth: sub
+                    .get_one::<String>("rtsp-auth")
+                    .cloned()
+                    .unwrap_or_else(|| "auto".to_string()),
+                rtsp_transport: sub
+                    .get_one::<String>("rtsp-transport")
+                    .cloned()
+                    .unwrap_or_else(|| "tcp".to_string()),
+                stream: sub.get_one::<String>("stream").cloned(),
+                path: sub.get_one::<String>("path").cloned(),
+                audio_codec: sub.get_one::<String>("audio-codec").cloned(),
+                overwrite: sub.get_one::<String>("overwrite").cloned(),
+                slack_channel: sub.get_one::<String>("slack-channel").cloned(),
+                slack_token: sub.get_one::<String>("slack-token").cloned(),
+                slack_message: sub.get_one::<String>("slack-message").cloned(),
+                remaining,
+            };
+
+            crate::cli::audio::run_audio(args, config_path, dur_explicit, seconds_explicit).await?;
+        }
+        Some(("watch", _)) | Some(("doctor", _)) => {
             return Err(QamError::Usage("not implemented".into()));
         }
         _ => {

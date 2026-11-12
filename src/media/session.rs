@@ -213,7 +213,9 @@ impl RtspSession {
         }
 
         // PLAY
-        let play_fut = session.play(PlayOptions::default());
+        let play_options = PlayOptions::default()
+            .initial_timestamp(retina::client::InitialTimestampPolicy::Permissive);
+        let play_fut = session.play(play_options);
         let playing_session = tokio::time::timeout(io_timeout, play_fut)
             .await
             .map_err(|_| QamError::Media("timed out during RTSP play".to_string()))?

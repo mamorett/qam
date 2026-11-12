@@ -1,4 +1,6 @@
 pub mod add;
+pub mod audio;
+pub mod clip;
 pub mod completion;
 pub mod discover;
 pub mod flags;

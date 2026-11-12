@@ -93,6 +93,29 @@ pub fn is_h265_keyframe(nal: &[u8]) -> bool {
     matches!(nal_type, 19..=21) // IDR_W_RADL, IDR_N_LP, CRA_NUT
 }
 
+/// Extracts SPS (nal_type 7) and PPS (nal_type 8) parameter sets from an H.264 Annex-B stream.
+pub fn extract_h264_sps_pps(data: &[u8]) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
+    let mut sps = None;
+    let mut pps = None;
+
+    for nal in find_nal_units(data) {
+        if nal.is_empty() {
+            continue;
+        }
+        let nal_type = nal[0] & 0x1F;
+        if nal_type == 7 && sps.is_none() {
+            sps = Some(nal.to_vec());
+        } else if nal_type == 8 && pps.is_none() {
+            pps = Some(nal.to_vec());
+        }
+        if sps.is_some() && pps.is_some() {
+            break;
+        }
+    }
+
+    (sps, pps)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
