@@ -189,6 +189,21 @@ fn build_snap_cmd() -> Command {
                 .default_value("30s")
                 .help("Timeout for capture"),
         )
+        .arg(
+            Arg::new("overwrite")
+                .long("overwrite")
+                .default_value("true")
+                .hide(true)
+                .help("Overwrite existing output file"),
+        )
+        .arg(
+            Arg::new("quality")
+                .long("quality")
+                .default_value("0")
+                .hide(true)
+                .value_parser(clap::value_parser!(u8))
+                .help("Quality setting: 0=default, 1..=31"),
+        )
         .arg(trailing_ignored_arg())
 }
 
@@ -627,8 +642,50 @@ where
 
             crate::cli::discover::execute(timeout, info, config_path).await?;
         }
-        Some(("snap", _)) | Some(("clip", _)) | Some(("audio", _)) | Some(("watch", _))
-        | Some(("doctor", _)) => {
+        Some(("snap", sub)) => {
+            let camera = sub.get_one::<String>("camera").cloned();
+            let mut remaining = sub
+                .get_many::<String>("trailing_ignored")
+                .map(|vals| vals.cloned().collect::<Vec<_>>())
+                .unwrap_or_default();
+            if let Some(pos) = sub.get_one::<String>("camera_pos")
+                && !pos.is_empty()
+            {
+                remaining.insert(0, pos.clone());
+            }
+
+            let args = crate::cli::snap::SnapArgs {
+                camera,
+                out: sub.get_one::<String>("out").cloned(),
+                timeout: sub
+                    .get_one::<String>("timeout")
+                    .cloned()
+                    .unwrap_or_else(|| "30s".to_string()),
+                rtsp_auth: sub
+                    .get_one::<String>("rtsp-auth")
+                    .cloned()
+                    .unwrap_or_else(|| "auto".to_string()),
+                rtsp_transport: sub
+                    .get_one::<String>("rtsp-transport")
+                    .cloned()
+                    .unwrap_or_else(|| "tcp".to_string()),
+                stream: sub.get_one::<String>("stream").cloned(),
+                path: sub.get_one::<String>("path").cloned(),
+                quality: *sub.get_one::<u8>("quality").unwrap_or(&0),
+                overwrite: sub
+                    .get_one::<String>("overwrite")
+                    .cloned()
+                    .unwrap_or_else(|| "true".to_string()),
+                rtsp_client: sub.get_one::<String>("rtsp-client").cloned(),
+                slack_channel: sub.get_one::<String>("slack-channel").cloned(),
+                slack_token: sub.get_one::<String>("slack-token").cloned(),
+                slack_message: sub.get_one::<String>("slack-message").cloned(),
+                remaining,
+            };
+
+            crate::cli::snap::run_snap(args, config_path, false).await?;
+        }
+        Some(("clip", _)) | Some(("audio", _)) | Some(("watch", _)) | Some(("doctor", _)) => {
             return Err(QamError::Usage("not implemented".into()));
         }
         _ => {

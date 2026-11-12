@@ -69,9 +69,9 @@ This document tracks 100% user-facing feature parity between the legacy Go `cams
 
 |Status|Go source|Feature|Rust target|Test|
 |---|---|---|---|---|
-|[ ]|`snap.go`|Flags: `--camera/--url/--host/--port/--user/--pass/--path/--scheme`, `--out` (`-` for stdout, empty -> temp file `qam-*.jpg`), `--overwrite` (default `true`), `--quality` (`0` = default quality ~85; `1..=31` mapped to JPEG quality: q=1 -> 98, q=31 -> 20)|`src/cli/snap.rs`|`tests/cli_snap.rs`|
-|[ ]|`snap.go` + `ffmpeg.go:Snapshot`|Connect via RTSP, decode first complete video keyframe (H.264, H.265, or MJPEG), encode to JPEG (or PNG if `--out *.png`, WebP if `*.webp`), write atomically; refuse overwrite if `--overwrite=false` and file exists (`output file exists: <path>`); print output path (nothing when `--out -` unless `--json`); `--json` prints `{"path": "..."}`|`src/media/snapshot.rs`|`tests/cli_snap.rs`|
-|[ ]|`snap.go` + `slack.go`|Slack upload flags (`--slack-channel`, `--slack-Message`, `--slack-thread-ts`, `--slack-token`, `--slack-api-url`, `--slack-dry-run`, `--slack-keep`); rejects `--out -` with `--slack-channel`; deletes temp file after upload unless `--out` was explicit or `--slack-keep`; `--json` outputs `{"path":..., "slack":{...}}`|`src/cli/snap.rs`, `src/slack.rs`|`tests/cli_slack.rs`|
+|[x]|`snap.go`|Flags: `--camera/--url/--host/--port/--user/--pass/--path/--scheme`, `--out` (`-` for stdout, empty -> temp file `qam-*.jpg`), `--overwrite` (default `true`), `--quality` (`0` = default quality ~85; `1..=31` mapped to JPEG quality: q=1 -> 98, q=31 -> 20)|`src/cli/snap.rs`|`tests/cli_snap.rs`|
+|[x]|`snap.go` + `ffmpeg.go:Snapshot`|Connect via RTSP, decode first complete video keyframe (H.264, H.265, or MJPEG), encode to JPEG (or PNG if `--out *.png`, WebP if `*.webp`), write atomically; refuse overwrite if `--overwrite=false` and file exists (`output file exists: <path>`); print output path (nothing when `--out -` unless `--json`); `--json` prints `{"path": "..."}`|`src/media/snapshot.rs`|`tests/cli_snap.rs`|
+|[x]|`snap.go` + `slack.go`|Slack upload flags (`--slack-channel`, `--slack-Message`, `--slack-thread-ts`, `--slack-token`, `--slack-api-url`, `--slack-dry-run`, `--slack-keep`); rejects `--out -` with `--slack-channel`; deletes temp file after upload unless `--out` was explicit or `--slack-keep`; `--json` outputs `{"path":..., "slack":{...}}`|`src/cli/snap.rs`, `src/slack.rs`|`tests/cli_slack.rs`|
 
 ### `clip` (`internal/cli/clip.go` + `record.go`)
 

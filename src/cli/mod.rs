@@ -6,5 +6,6 @@ pub mod list;
 pub mod resolve;
 pub mod root;
 pub mod slack_cmd;
+pub mod snap;
 pub mod style;
 pub mod version;
