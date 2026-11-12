@@ -785,7 +785,42 @@ where
 
             crate::cli::audio::run_audio(args, config_path, dur_explicit, seconds_explicit).await?;
         }
-        Some(("watch", _)) | Some(("doctor", _)) => {
+        Some(("watch", sub)) => {
+            let threshold = if let Some(s) = sub.get_one::<String>("threshold") {
+                match s.parse::<f64>() {
+                    Ok(val) => Some(val),
+                    Err(_) => {
+                        return Err(QamError::Usage(format!(
+                            "invalid argument {:?} for \"--threshold\" flag",
+                            s
+                        )));
+                    }
+                }
+            } else {
+                Some(0.2)
+            };
+
+            let json = *sub.get_one::<bool>("json").unwrap_or(&false);
+
+            let args = crate::cli::watch::WatchArgs {
+                camera: sub.get_one::<String>("camera").cloned(),
+                camera_pos: sub.get_one::<String>("camera_pos").cloned(),
+                action: sub.get_one::<String>("action").cloned(),
+                action_template: sub.get_one::<String>("action-template").cloned(),
+                threshold,
+                cooldown: sub.get_one::<String>("cooldown").cloned(),
+                duration: sub.get_one::<String>("duration").cloned(),
+                json,
+                path: sub.get_one::<String>("path").cloned(),
+                rtsp_auth: sub.get_one::<String>("rtsp-auth").cloned(),
+                rtsp_transport: sub.get_one::<String>("rtsp-transport").cloned(),
+                stream: sub.get_one::<String>("stream").cloned(),
+                config: config_path.map(|s| s.to_string()),
+            };
+
+            crate::cli::watch::run_watch(args).await?;
+        }
+        Some(("doctor", _)) => {
             return Err(QamError::Usage("not implemented".into()));
         }
         _ => {

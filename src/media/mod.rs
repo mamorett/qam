@@ -4,6 +4,7 @@ pub mod codec;
 pub mod image_out;
 pub mod mux;
 pub mod recorder;
+pub mod scene;
 pub mod session;
 pub mod snapshot;
 pub mod video_decode;

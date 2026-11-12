@@ -11,3 +11,4 @@ pub mod slack_cmd;
 pub mod snap;
 pub mod style;
 pub mod version;
+pub mod watch;

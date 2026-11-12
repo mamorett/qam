@@ -7,7 +7,8 @@ use retina::client::{
     AuthPolicy, Credentials, Demuxed, PlayOptions, Session, SessionGroup, SessionOptions,
     SetupOptions, TcpTransportOptions, Transport as RetinaTransport, UdpTransportOptions,
 };
-use retina::codec::{CodecItem, FrameFormat};
+use retina::codec::CodecItem;
+pub use retina::codec::FrameFormat;
 
 use crate::cli::flags::{RtspAuth, Transport};
 use crate::errors::QamError;

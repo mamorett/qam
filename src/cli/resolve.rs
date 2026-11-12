@@ -169,12 +169,11 @@ pub fn parse_scene_score(line: &str) -> Option<f64> {
 }
 
 /// Applies `{camera}`, `{score}`, and `{time}` template parameters, matching Go `applyTemplate`.
-pub fn apply_template(
-    tmpl: &str,
-    camera: &str,
-    score: f64,
-    t: chrono::DateTime<chrono::Utc>,
-) -> String {
+pub fn apply_template<Tz>(tmpl: &str, camera: &str, score: f64, t: chrono::DateTime<Tz>) -> String
+where
+    Tz: chrono::TimeZone,
+    Tz::Offset: std::fmt::Display,
+{
     let score_str = format!("{:.3}", score);
     let time_str = rfc3339_nano(t);
     tmpl.replace("{camera}", camera)
