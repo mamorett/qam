@@ -126,9 +126,16 @@ impl RtspSession {
         let mut session = tokio::time::timeout(io_timeout, describe_fut)
             .await
             .map_err(|_| {
-                QamError::Media("timed out connecting/describing RTSP session".to_string())
+                QamError::Media(format!(
+                    "timed out connecting/describing RTSP session at {} (transport={}, timeout={}s)\nHints:\n  - Verify the camera is reachable on the network and the host/port are correct.\n  - Try increasing --timeout or switching transport (--rtsp-transport udp).\n  - Run `qam doctor --probe` to diagnose connectivity.",
+                    crate::rtsp_url::redact_url(url_str),
+                    transport.as_str(),
+                    io_timeout.as_secs()
+                ))
             })?
-            .map_err(|e| QamError::Media(format!("RTSP describe failed: {e}")))?;
+            .map_err(|e| {
+                QamError::Media(format_rtsp_describe_error(url_str, transport, auth, &e))
+            })?;
 
         let mut video_stream_id = None;
         let mut video_codec = None;
@@ -303,6 +310,46 @@ impl RtspSession {
         let _ =
             tokio::time::timeout(Duration::from_secs(2), self.session_group.await_teardown()).await;
     }
+}
+
+fn format_rtsp_describe_error(
+    url_str: &str,
+    transport: Transport,
+    auth: RtspAuth,
+    err: &retina::Error,
+) -> String {
+    let redacted = crate::rtsp_url::redact_url(url_str);
+    let raw = err.to_string();
+    let summary = raw.lines().next().unwrap_or(&raw).trim();
+    let status = err.status_code();
+
+    let hints = match status {
+        Some(454) => {
+            "  - Camera returned 454 (Session Not Found) to DESCRIBE.\n\
+             \x20 - Verify the stream path (--stream or --path): many cameras use /live, /h264Preview_01_main, /ch0_0.h264, or /11 instead of /stream1.\n\
+             \x20 - If this camera works behind go2rtc, copy the exact path from your working RTSP URL into --path (or 'path:' in config.yaml).\n\
+             \x20 - Try --rtsp-transport udp or --rtsp-auth basic|digest, or run `qam doctor --probe`."
+        }
+        Some(401) => {
+            "  - Authentication failed (401 Unauthorized). Check username and password in config or `qam add`.\n\
+             \x20 - If the password contains special characters (e.g. , $ ! & @ :), wrap it in single quotes in your shell or quotes in config.yaml.\n\
+             \x20 - Try forcing --rtsp-auth basic or --rtsp-auth digest."
+        }
+        Some(404) => {
+            "  - Stream path not found (404). Check --stream (e.g. stream1, stream2) or specify the exact path with --path."
+        }
+        _ => {
+            "  - Verify host, port, and stream path (--stream / --path) in your camera config.\n\
+             \x20 - If the password contains special characters (e.g. , $ ! & @ :), ensure it is quoted in config.yaml.\n\
+             \x20 - Try --rtsp-transport udp or --rtsp-auth basic|digest, or run `qam doctor --probe`."
+        }
+    };
+
+    format!(
+        "RTSP describe failed for {redacted}: {summary}\nHints:\n  - Active settings: transport={}, auth={}\n{hints}",
+        transport.as_str(),
+        auth.as_str()
+    )
 }
 
 fn urlencoding_decode(s: &str) -> String {

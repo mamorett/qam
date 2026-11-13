@@ -5,38 +5,45 @@ use crate::errors::QamError;
 use crate::rtsp_url::build_url;
 use crate::timefmt::rfc3339_nano;
 
-/// Replaces the last path segment of an RTSP URL with `stream`, matching Go `appendStream`.
+/// Replaces the URL path (everything from the first `/` after `scheme://authority`) with `new_path`.
+fn replace_url_path(base_url: &str, new_path: &str) -> String {
+    let path_part = if new_path.starts_with('/') {
+        new_path.to_string()
+    } else {
+        format!("/{new_path}")
+    };
+    let after_scheme = base_url.find("://").map(|i| i + 3).unwrap_or(0);
+    if let Some(rel_idx) = base_url[after_scheme..].find('/') {
+        format!("{}{}", &base_url[..after_scheme + rel_idx], path_part)
+    } else {
+        format!("{base_url}{path_part}")
+    }
+}
+
+/// Replaces the last path segment (or full path if `stream` contains `/`) of an RTSP URL with `stream`.
 pub fn append_stream(base_url: &str, stream: &str) -> String {
     if stream.is_empty() {
         return base_url.to_string();
     }
-    let stream_part = if stream.starts_with('/') {
-        stream.to_string()
-    } else {
-        format!("/{stream}")
-    };
-    if let Some(idx) = base_url.rfind('/') {
-        format!("{}{}", &base_url[..idx], stream_part)
+    let trimmed = stream.trim_start_matches('/');
+    if trimmed.contains('/') {
+        return replace_url_path(base_url, stream);
+    }
+    let stream_part = format!("/{trimmed}");
+    let after_scheme = base_url.find("://").map(|i| i + 3).unwrap_or(0);
+    if let Some(rel_idx) = base_url[after_scheme..].rfind('/') {
+        format!("{}{}", &base_url[..after_scheme + rel_idx], stream_part)
     } else {
         format!("{base_url}{stream_part}")
     }
 }
 
-/// Replaces the trailing path segment of an RTSP URL with `path`, matching Go `appendPath`.
+/// Replaces the path of an RTSP URL with `path`, supporting both single- and multi-segment paths.
 pub fn append_path(base_url: &str, path: &str) -> String {
     if path.is_empty() {
         return base_url.to_string();
     }
-    let path_part = if path.starts_with('/') {
-        path.to_string()
-    } else {
-        format!("/{path}")
-    };
-    if let Some(idx) = base_url.rfind('/') {
-        format!("{}{}", &base_url[..idx], path_part)
-    } else {
-        format!("{base_url}{path_part}")
-    }
+    replace_url_path(base_url, path)
 }
 
 /// Resolves the final RTSP target URL from camera and CLI flags.
@@ -65,15 +72,20 @@ pub fn resolve_rtsp_url(
     }
 
     let base = build_url(&effective_cam)?;
-    if !flag_path.is_empty() {
-        Ok(append_path(&base, flag_path))
-    } else if !flag_stream.is_empty() {
-        Ok(append_stream(&base, flag_stream))
-    } else if !effective_cam.stream.is_empty() {
-        Ok(append_stream(&base, &effective_cam.stream))
-    } else {
-        Ok(base)
+    if !flag_stream.is_empty() {
+        return Ok(append_stream(&base, flag_stream));
     }
+    // When cam.url is set, build_url preserves its original path, so apply overrides here.
+    if !cam.url.trim().is_empty() {
+        if !flag_path.is_empty() {
+            return Ok(append_path(&base, flag_path));
+        } else if !effective_cam.path.is_empty() {
+            return Ok(append_path(&base, &effective_cam.path));
+        } else if !effective_cam.stream.is_empty() {
+            return Ok(append_stream(&base, &effective_cam.stream));
+        }
+    }
+    Ok(base)
 }
 
 /// Resolves the RTSP transport: Flag (if explicitly provided) > Camera > Config Defaults > default ("tcp").
@@ -205,6 +217,41 @@ mod tests {
         assert_eq!(append_path(base, "/Bfy47"), "rtsp://192.168.1.1:7447/Bfy47");
         assert_eq!(append_path(base, "Bfy47"), "rtsp://192.168.1.1:7447/Bfy47");
         assert_eq!(append_path(base, ""), base);
+
+        let multi = "rtsp://user:pass@192.168.0.3:9097/Streaming/Channels/101";
+        assert_eq!(
+            append_path(multi, "Streaming/Channels/102"),
+            "rtsp://user:pass@192.168.0.3:9097/Streaming/Channels/102"
+        );
+        assert_eq!(
+            append_stream(multi, "Streaming/Channels/102"),
+            "rtsp://user:pass@192.168.0.3:9097/Streaming/Channels/102"
+        );
+    }
+
+    #[test]
+    fn test_resolve_rtsp_url_multi_segment_path() {
+        let cam = Camera {
+            name: "hik".into(),
+            host: "192.168.0.3".into(),
+            port: 9097,
+            user: "admin".into(),
+            pass: "p,ass".into(),
+            path: "Streaming/Channels/101".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            resolve_rtsp_url(&cam, None, None).unwrap(),
+            "rtsp://admin:p,ass@192.168.0.3:9097/Streaming/Channels/101"
+        );
+        assert_eq!(
+            resolve_rtsp_url(&cam, None, Some("Streaming/Channels/102")).unwrap(),
+            "rtsp://admin:p,ass@192.168.0.3:9097/Streaming/Channels/102"
+        );
+        assert_eq!(
+            resolve_rtsp_url(&cam, Some("Streaming/Channels/103"), None).unwrap(),
+            "rtsp://admin:p,ass@192.168.0.3:9097/Streaming/Channels/103"
+        );
     }
 
     #[test]

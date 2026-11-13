@@ -2,13 +2,12 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::cli::flags::{RtspAuth, Transport, parse_rtsp_auth, transport_flag};
-use crate::cli::resolve::{append_path, append_stream, apply_template};
+use crate::cli::resolve::{apply_template, resolve_rtsp_url};
 use crate::config;
 use crate::errors::QamError;
 use crate::media::scene::SceneDetector;
 use crate::media::session::{FrameFormat, MediaPayload, RtspSession};
 use crate::media::video_decode::VideoDecoder;
-use crate::rtsp_url::build_url;
 use crate::timefmt::{go_quote, parse_go_duration, rfc3339_nano};
 
 #[derive(Debug, Default)]
@@ -85,33 +84,8 @@ pub async fn run_watch(args: WatchArgs) -> Result<(), QamError> {
     let flag_stream = args.stream.as_deref().unwrap_or("").trim();
     let flag_path = args.path.as_deref().unwrap_or("").trim();
 
-    if !flag_stream.is_empty() && !flag_path.is_empty() {
-        return Err(QamError::Usage(
-            "use --path for custom RTSP token URLs; omit --stream".into(),
-        ));
-    }
-
-    let mut effective_cam = cam.clone();
-    let final_path = if !flag_path.is_empty() {
-        flag_path.to_string()
-    } else if !effective_cam.path.is_empty() {
-        effective_cam.path.clone()
-    } else {
-        String::new()
-    };
-    if !final_path.is_empty() {
-        effective_cam.path = final_path.clone();
-        effective_cam.stream = String::new();
-    }
-
-    let mut url = build_url(&effective_cam)?;
-    if !final_path.is_empty() {
-        url = append_path(&url, &final_path);
-    } else if !flag_stream.is_empty() {
-        url = append_stream(&url, flag_stream);
-    } else if !effective_cam.stream.is_empty() {
-        url = append_stream(&url, &effective_cam.stream);
-    }
+    let effective_cam = cam.clone();
+    let url = resolve_rtsp_url(&cam, Some(flag_stream), Some(flag_path))?;
 
     let tmpl = args.action_template.unwrap_or_default();
     let mut initial_action = action.clone();

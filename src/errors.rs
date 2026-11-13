@@ -36,24 +36,41 @@ impl QamError {
     }
 }
 
+fn contains_code(msg: &str, code: &str) -> bool {
+    let mut start = 0;
+    while let Some(idx) = msg[start..].find(code) {
+        let abs = start + idx;
+        let prev_ok = abs == 0
+            || (!msg.as_bytes()[abs - 1].is_ascii_digit() && msg.as_bytes()[abs - 1] != b':');
+        let after = abs + code.len();
+        let next_ok = after == msg.len() || !msg.as_bytes()[after].is_ascii_digit();
+        if prev_ok && next_ok {
+            return true;
+        }
+        start = abs + code.len();
+    }
+    false
+}
+
 /// Classifies an error message into a canonical error category string, matching Go `ClassifyError`.
 pub fn classify_message(s: &str) -> &'static str {
-    let msg = s.to_ascii_lowercase();
-    if msg.contains("401") || msg.contains("unauthorized") || msg.contains("auth") {
+    let primary = s.split("\nHints:").next().unwrap_or(s);
+    let msg = primary.to_ascii_lowercase();
+    if contains_code(&msg, "401") || msg.contains("unauthorized") || msg.contains("auth") {
         "auth"
     } else if msg.contains("connection refused")
         || msg.contains("actively refused")
-        || msg.contains("10061")
+        || contains_code(&msg, "10061")
         || msg.contains("econnrefused")
     {
         "network-refused"
     } else if msg.contains("timed out")
         || msg.contains("timeout")
-        || msg.contains("10060")
+        || contains_code(&msg, "10060")
         || msg.contains("etimedout")
     {
         "network-timeout"
-    } else if msg.contains("not found") || msg.contains("404") {
+    } else if msg.contains("not found") || contains_code(&msg, "404") {
         "not-found"
     } else {
         "unknown"

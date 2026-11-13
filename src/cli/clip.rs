@@ -4,11 +4,10 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::cli::flags::{RtspAuth, Transport, parse_bool_flag, parse_duration_flag};
-use crate::cli::resolve::{append_path, append_stream};
+use crate::cli::resolve::resolve_rtsp_url;
 use crate::cli::style::Styler;
 use crate::errors::QamError;
 use crate::media::recorder::{ClipRecordOptions, record_media};
-use crate::rtsp_url::build_url;
 use crate::slack::{maybe_upload_to_slack, resolve_slack_channel, resolve_slack_token};
 
 #[derive(Args, Debug)]
@@ -126,7 +125,7 @@ pub async fn run_clip(
     }
 
     let stream = args.stream.unwrap_or_default();
-    let mut custom_path = args.path.unwrap_or_default();
+    let custom_path = args.path.unwrap_or_default();
     if !stream.is_empty() && !custom_path.is_empty() {
         return Err(QamError::Usage(
             "use --path for custom RTSP token URLs; omit --stream".into(),
@@ -188,30 +187,19 @@ pub async fn run_clip(
     // 6. Load config
     let cfg = crate::config::load(global_config.unwrap_or(""))?;
 
-    let mut cam = cfg
+    let cam = cfg
         .find_camera(&camera_name)
         .ok_or_else(|| QamError::Usage(format!("camera {camera_name:?} not found")))?;
 
-    if custom_path.is_empty() && !cam.path.is_empty() {
-        custom_path = cam.path.clone();
-    }
-    if !custom_path.is_empty() {
-        cam.path = custom_path.clone();
-        cam.stream = String::new();
-    }
-
-    let mut url = build_url(&cam)?;
-    if !custom_path.is_empty() {
-        url = append_path(&url, &custom_path);
-    } else {
-        url = append_stream(&url, &stream);
-    }
+    let url = resolve_rtsp_url(&cam, Some(&stream), Some(&custom_path))?;
 
     // 7. Flags precedence
     let transport = if args.rtsp_transport != "tcp" {
         Transport::from_str(&args.rtsp_transport)?
     } else if !cam.rtsp_transport.is_empty() {
         Transport::from_str(&cam.rtsp_transport)?
+    } else if !cfg.defaults.rtsp_transport.is_empty() {
+        Transport::from_str(&cfg.defaults.rtsp_transport)?
     } else {
         Transport::Tcp
     };
@@ -220,6 +208,8 @@ pub async fn run_clip(
         RtspAuth::from_str(&args.rtsp_auth)?
     } else if !cam.rtsp_auth.is_empty() {
         RtspAuth::from_str(&cam.rtsp_auth)?
+    } else if !cfg.defaults.rtsp_auth.is_empty() {
+        RtspAuth::from_str(&cfg.defaults.rtsp_auth)?
     } else {
         RtspAuth::Auto
     };

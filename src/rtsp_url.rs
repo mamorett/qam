@@ -29,6 +29,27 @@ pub fn encode_user_password(s: &str) -> String {
 
 /// Builds an RTSP URL for a camera, matching Go's `rtsp.BuildURL`.
 pub fn build_url(cam: &Camera) -> Result<String, QamError> {
+    if !cam.url.trim().is_empty() {
+        let mut u = url::Url::parse(cam.url.trim())
+            .map_err(|e| QamError::RtspUrl(format!("invalid camera url {:?}: {e}", cam.url)))?;
+        match u.scheme().to_ascii_lowercase().as_str() {
+            "rtsp" | "rtsps" => {}
+            other => {
+                return Err(QamError::RtspUrl(format!(
+                    "unsupported protocol {:?}",
+                    other
+                )));
+            }
+        }
+        if u.username().is_empty() && !cam.user.is_empty() {
+            let _ = u.set_username(&cam.user);
+            if !cam.pass.is_empty() {
+                let _ = u.set_password(Some(&cam.pass));
+            }
+        }
+        return Ok(u.to_string());
+    }
+
     if cam.host.trim().is_empty() {
         return Err(QamError::RtspUrl("host is required".to_string()));
     }
@@ -74,10 +95,12 @@ pub fn build_url(cam: &Camera) -> Result<String, QamError> {
         }
     }
 
-    let mut path = if cam.path.is_empty() {
-        DEFAULT_PATH.to_string()
-    } else {
+    let mut path = if !cam.path.is_empty() {
         cam.path.clone()
+    } else if !cam.stream.is_empty() {
+        cam.stream.clone()
+    } else {
+        DEFAULT_PATH.to_string()
     };
     if !path.starts_with('/') {
         path.insert(0, '/');

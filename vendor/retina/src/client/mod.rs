@@ -491,7 +491,7 @@ pub(crate) enum RequestedAuth {
 /// Options which must be known right as a session is created.
 ///
 /// Decisions which can be deferred are in [`SetupOptions`] or [`PlayOptions`] instead.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SessionOptions {
     creds: Option<Credentials>,
     auth_policy: AuthPolicy,
@@ -1528,13 +1528,69 @@ impl Session<Described> {
     /// Expects to be called from a tokio runtime.
     pub async fn describe(url: Url, options: SessionOptions) -> Result<Self, Error> {
         let conn = RtspConnection::connect(&url).await?;
-        Self::describe_with_conn(conn, options, url).await
+        match Self::describe_with_conn(conn, options.clone(), url.clone()).await {
+            Ok(session) => Ok(session),
+            Err(err) if matches!(err.status_code(), Some(454 | 400 | 405 | 501)) => {
+                // Some cameras require an initial OPTIONS request before DESCRIBE
+                // and reject DESCRIBE at CSeq=1 with 454/400/501. Try OPTIONS <url>
+                // first, then OPTIONS * if needed.
+                let mut last_status_err = None;
+                for opt_uri in [Some(url.clone()), None] {
+                    match Self::try_options_then_describe(&url, &options, opt_uri).await {
+                        Ok(session) => return Ok(session),
+                        Err(retry_err) if retry_err.status_code().is_some() => {
+                            last_status_err = Some(retry_err);
+                        }
+                        Err(_) => {}
+                    }
+                }
+                Err(last_status_err.unwrap_or(err))
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    async fn try_options_then_describe(
+        url: &Url,
+        options: &SessionOptions,
+        opt_uri: Option<Url>,
+    ) -> Result<Self, Error> {
+        let mut retry_conn = RtspConnection::connect(url).await?;
+        let mut opt_req = OwnedMessage::Request {
+            head: msg::Request {
+                method: msg::Method::OPTIONS,
+                request_uri: opt_uri,
+                headers: Default::default(),
+            },
+            body: Bytes::new(),
+        };
+        let mut requested_auth = None;
+        retry_conn
+            .send(
+                ResponseMode::Normal,
+                options,
+                None,
+                &mut requested_auth,
+                &mut opt_req,
+            )
+            .await?;
+        Self::describe_with_conn_with_auth(retry_conn, options.clone(), url.clone(), requested_auth)
+            .await
     }
 
     async fn describe_with_conn(
+        conn: RtspConnection,
+        options: SessionOptions,
+        url: Url,
+    ) -> Result<Self, Error> {
+        Self::describe_with_conn_with_auth(conn, options, url, None).await
+    }
+
+    async fn describe_with_conn_with_auth(
         mut conn: RtspConnection,
         options: SessionOptions,
         url: Url,
+        mut requested_auth: Option<RequestedAuth>,
     ) -> Result<Self, Error> {
         let mut req = OwnedMessage::Request {
             head: msg::Request {
@@ -1548,7 +1604,6 @@ impl Session<Described> {
             },
             body: Bytes::new(),
         };
-        let mut requested_auth = None;
         let (msg_ctx, cseq, response, resp_body) = conn
             .send(
                 ResponseMode::Normal,

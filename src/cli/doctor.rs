@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use crate::cli::resolve::resolve_rtsp_url;
 use crate::cli::style::Styler;
 use crate::config::{self, resolve_load_path};
 use crate::errors::QamError;
 use crate::media::probe::probe_rtsp;
-use crate::rtsp_url::build_url;
 use crate::timefmt::parse_go_duration;
 
 #[derive(Debug, Default)]
@@ -85,7 +85,7 @@ pub async fn run_doctor(args: DoctorArgs) -> Result<(), QamError> {
             Ok(Ok(_stream)) => {}
         }
 
-        let url = match build_url(cam) {
+        let url = match resolve_rtsp_url(cam, None, None) {
             Ok(u) => u,
             Err(e) => {
                 println!("{} {} RTSP URL invalid: {}", sty.err("✖"), cam.name, e);
