@@ -8,6 +8,7 @@ use crate::cli::flags::{RtspAuth, Transport, parse_bool_flag, parse_duration_fla
 use crate::cli::resolve::resolve_rtsp_url;
 use crate::errors::QamError;
 use crate::media::snapshot::{SnapshotOptions, capture_snapshot};
+use crate::s3::S3Flags;
 
 #[derive(Args, Debug)]
 #[command(args_conflicts_with_subcommands = true)]
@@ -68,6 +69,30 @@ pub struct SnapArgs {
     #[arg(long = "slack-message")]
     pub slack_message: Option<String>,
 
+    /// Upload the capture to S3-compatible storage (settings from config/env)
+    #[arg(long = "s3")]
+    pub s3: Option<bool>,
+
+    /// Bucket to upload to; implies --s3
+    #[arg(long = "s3-bucket")]
+    pub s3_bucket: Option<String>,
+
+    /// Object key or template
+    #[arg(long = "s3-key")]
+    pub s3_key: Option<String>,
+
+    /// Object key prefix (overrides config)
+    #[arg(long = "s3-prefix")]
+    pub s3_prefix: Option<String>,
+
+    /// S3 endpoint URL
+    #[arg(long = "s3-endpoint")]
+    pub s3_endpoint: Option<String>,
+
+    /// S3 region
+    #[arg(long = "s3-region")]
+    pub s3_region: Option<String>,
+
     /// Positional camera name if --camera not set, plus remaining trailing args
     #[arg(trailing_var_arg = true)]
     pub remaining: Vec<String>,
@@ -95,6 +120,15 @@ pub async fn run_snap(
         message: args.slack_message,
     };
     let slack_requested = slack_flags.upload_requested()?;
+    let s3_flags = S3Flags {
+        enabled: args.s3,
+        bucket: args.s3_bucket,
+        key: args.s3_key,
+        prefix: args.s3_prefix,
+        endpoint: args.s3_endpoint,
+        region: args.s3_region,
+    };
+    let s3_requested = s3_flags.upload_requested()?;
 
     let stream = args.stream.unwrap_or_default();
     let custom_path = args.path.unwrap_or_default();
@@ -137,10 +171,17 @@ pub async fn run_snap(
         return Err(QamError::Media(format!("output file exists: {out_path}")));
     }
 
-    if out_path == "-" && slack_requested {
-        return Err(QamError::Usage(
-            "--out - cannot be used with Slack upload".into(),
-        ));
+    if out_path == "-" {
+        if s3_requested {
+            return Err(QamError::Usage(
+                "--out - cannot be used with S3 upload".into(),
+            ));
+        }
+        if slack_requested {
+            return Err(QamError::Usage(
+                "--out - cannot be used with Slack upload".into(),
+            ));
+        }
     }
 
     // 4. Load config and find camera
@@ -191,8 +232,10 @@ pub async fn run_snap(
     let outcome = deliver(DeliveryRequest {
         out_path: &out_path,
         is_temp_file,
+        camera: &cam.name,
         cfg: &cfg,
         slack: slack_flags,
+        s3: s3_flags,
         slack_api_base: None,
     })
     .await?;
@@ -202,6 +245,9 @@ pub async fn run_snap(
         let json_val = serde_json::json!({
             "path": out_path,
             "slack_uploaded": outcome.slack_uploaded,
+            "s3_uploaded": outcome.s3.is_some(),
+            "s3_uri": outcome.s3.as_ref().map(|r| r.uri.as_str()),
+            "s3_url": outcome.s3.as_ref().and_then(|r| r.url.as_deref()),
         });
         println!("{json_val}");
     }

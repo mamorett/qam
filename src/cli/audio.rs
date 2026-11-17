@@ -66,6 +66,30 @@ pub struct AudioArgs {
     #[arg(long = "slack-message")]
     pub slack_message: Option<String>,
 
+    /// Upload the capture to S3-compatible storage (settings from config/env)
+    #[arg(long = "s3")]
+    pub s3: Option<bool>,
+
+    /// Bucket to upload to; implies --s3
+    #[arg(long = "s3-bucket")]
+    pub s3_bucket: Option<String>,
+
+    /// Object key or template
+    #[arg(long = "s3-key")]
+    pub s3_key: Option<String>,
+
+    /// Object key prefix (overrides config)
+    #[arg(long = "s3-prefix")]
+    pub s3_prefix: Option<String>,
+
+    /// S3 endpoint URL
+    #[arg(long = "s3-endpoint")]
+    pub s3_endpoint: Option<String>,
+
+    /// S3 region
+    #[arg(long = "s3-region")]
+    pub s3_region: Option<String>,
+
     /// Positional camera name if --camera not set, plus remaining trailing args
     #[arg(trailing_var_arg = true)]
     pub remaining: Vec<String>,
@@ -95,6 +119,12 @@ pub async fn run_audio(
         slack_channel: args.slack_channel,
         slack_token: args.slack_token,
         slack_message: args.slack_message,
+        s3: args.s3,
+        s3_bucket: args.s3_bucket,
+        s3_key: args.s3_key,
+        s3_prefix: args.s3_prefix,
+        s3_endpoint: args.s3_endpoint,
+        s3_region: args.s3_region,
         remaining: args.remaining,
     };
 

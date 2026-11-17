@@ -186,6 +186,35 @@ fn build_snap_cmd() -> Command {
                 "Slack API token (overrides config and SLACK_TOKEN env var); requires --slack",
             ),
         )
+        .arg(bool_arg(
+            "s3",
+            "Upload the capture to S3-compatible storage (settings from config/env)",
+        ))
+        .arg(
+            Arg::new("s3-bucket")
+                .long("s3-bucket")
+                .help("Bucket to upload to; implies --s3"),
+        )
+        .arg(
+            Arg::new("s3-key")
+                .long("s3-key")
+                .help("Object key or template ({camera},{date},{time},{timestamp},{ext},{filename},{prefix}); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-prefix")
+                .long("s3-prefix")
+                .help("Object key prefix (overrides config); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-endpoint")
+                .long("s3-endpoint")
+                .help("S3 endpoint URL, e.g. http://127.0.0.1:9000 (overrides config/env); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-region")
+                .long("s3-region")
+                .help("S3 region (default us-east-1; e.g. auto for R2); requires --s3"),
+        )
         .arg(
             Arg::new("stream")
                 .long("stream")
@@ -287,6 +316,35 @@ fn build_clip_cmd() -> Command {
                 "Slack API token (overrides config and SLACK_TOKEN env var); requires --slack",
             ),
         )
+        .arg(bool_arg(
+            "s3",
+            "Upload the capture to S3-compatible storage (settings from config/env)",
+        ))
+        .arg(
+            Arg::new("s3-bucket")
+                .long("s3-bucket")
+                .help("Bucket to upload to; implies --s3"),
+        )
+        .arg(
+            Arg::new("s3-key")
+                .long("s3-key")
+                .help("Object key or template ({camera},{date},{time},{timestamp},{ext},{filename},{prefix}); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-prefix")
+                .long("s3-prefix")
+                .help("Object key prefix (overrides config); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-endpoint")
+                .long("s3-endpoint")
+                .help("S3 endpoint URL, e.g. http://127.0.0.1:9000 (overrides config/env); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-region")
+                .long("s3-region")
+                .help("S3 region (default us-east-1; e.g. auto for R2); requires --s3"),
+        )
         .arg(
             Arg::new("stream")
                 .long("stream")
@@ -371,6 +429,35 @@ fn build_audio_cmd() -> Command {
             Arg::new("slack-token").long("slack-token").help(
                 "Slack API token (overrides config and SLACK_TOKEN env var); requires --slack",
             ),
+        )
+        .arg(bool_arg(
+            "s3",
+            "Upload the capture to S3-compatible storage (settings from config/env)",
+        ))
+        .arg(
+            Arg::new("s3-bucket")
+                .long("s3-bucket")
+                .help("Bucket to upload to; implies --s3"),
+        )
+        .arg(
+            Arg::new("s3-key")
+                .long("s3-key")
+                .help("Object key or template ({camera},{date},{time},{timestamp},{ext},{filename},{prefix}); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-prefix")
+                .long("s3-prefix")
+                .help("Object key prefix (overrides config); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-endpoint")
+                .long("s3-endpoint")
+                .help("S3 endpoint URL, e.g. http://127.0.0.1:9000 (overrides config/env); requires --s3"),
+        )
+        .arg(
+            Arg::new("s3-region")
+                .long("s3-region")
+                .help("S3 region (default us-east-1; e.g. auto for R2); requires --s3"),
         )
         .arg(
             Arg::new("stream")
@@ -707,6 +794,12 @@ where
                 slack_channel: sub.get_one::<String>("slack-channel").cloned(),
                 slack_token: sub.get_one::<String>("slack-token").cloned(),
                 slack_message: sub.get_one::<String>("slack-message").cloned(),
+                s3: sub.get_one::<bool>("s3").copied(),
+                s3_bucket: sub.get_one::<String>("s3-bucket").cloned(),
+                s3_key: sub.get_one::<String>("s3-key").cloned(),
+                s3_prefix: sub.get_one::<String>("s3-prefix").cloned(),
+                s3_endpoint: sub.get_one::<String>("s3-endpoint").cloned(),
+                s3_region: sub.get_one::<String>("s3-region").cloned(),
                 remaining,
             };
 
@@ -759,6 +852,12 @@ where
                 slack_channel: sub.get_one::<String>("slack-channel").cloned(),
                 slack_token: sub.get_one::<String>("slack-token").cloned(),
                 slack_message: sub.get_one::<String>("slack-message").cloned(),
+                s3: sub.get_one::<bool>("s3").copied(),
+                s3_bucket: sub.get_one::<String>("s3-bucket").cloned(),
+                s3_key: sub.get_one::<String>("s3-key").cloned(),
+                s3_prefix: sub.get_one::<String>("s3-prefix").cloned(),
+                s3_endpoint: sub.get_one::<String>("s3-endpoint").cloned(),
+                s3_region: sub.get_one::<String>("s3-region").cloned(),
                 remaining,
             };
 
@@ -809,6 +908,12 @@ where
                 slack_channel: sub.get_one::<String>("slack-channel").cloned(),
                 slack_token: sub.get_one::<String>("slack-token").cloned(),
                 slack_message: sub.get_one::<String>("slack-message").cloned(),
+                s3: sub.get_one::<bool>("s3").copied(),
+                s3_bucket: sub.get_one::<String>("s3-bucket").cloned(),
+                s3_key: sub.get_one::<String>("s3-key").cloned(),
+                s3_prefix: sub.get_one::<String>("s3-prefix").cloned(),
+                s3_endpoint: sub.get_one::<String>("s3-endpoint").cloned(),
+                s3_region: sub.get_one::<String>("s3-region").cloned(),
                 remaining,
             };
 

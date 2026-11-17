@@ -38,6 +38,19 @@ Options:
           Optional message to post with the file; requires --slack
       --slack-token <slack-token>
           Slack API token (overrides config and SLACK_TOKEN env var); requires --slack
+      --s3[=<s3>]
+          Upload the capture to S3-compatible storage (settings from config/env)
+      --s3-bucket <s3-bucket>
+          Bucket to upload to; implies --s3
+      --s3-key <s3-key>
+          Object key or template ({camera},{date},{time},{timestamp},{ext},{filename},{prefix});
+          requires --s3
+      --s3-prefix <s3-prefix>
+          Object key prefix (overrides config); requires --s3
+      --s3-endpoint <s3-endpoint>
+          S3 endpoint URL, e.g. http://127.0.0.1:9000 (overrides config/env); requires --s3
+      --s3-region <s3-region>
+          S3 region (default us-east-1; e.g. auto for R2); requires --s3
       --stream <stream>
           RTSP path segment (stream1 or stream2); ignored if --path is set
       --timeout <timeout>
