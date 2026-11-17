@@ -45,20 +45,22 @@ qam list
   - `--out`: Target output filepath.
   - `--stream` / `--path`: Override stream path on the fly.
   - `--rtsp-transport`: Force transport (`tcp` or `udp`).
-  - `--slack-channel`: Slack channel (`#alerts`) or user (`@user`).
-  - `--slack-message`: Message posted alongside the image.
+  - `--slack` / `--slack-channel`: Upload to Slack (default channel from config, or `#alerts` / `@user`).
+  - `--slack-message`: Message posted alongside the image; requires `--slack`.
+  - `--s3` / `--s3-bucket`: Upload to S3-compatible object storage (optional `--s3-key`, `--s3-prefix`, `--s3-endpoint`, `--s3-region`).
   - `--timeout`: Capture timeout (default `30s`).
 - **`clip`**: Record a short stream-copied MP4 clip with upfront `moov` atom (faststart).
   - `--dur`: Duration string (e.g. `5s`, `10s`).
   - `-s`, `--seconds`: Duration in integer seconds.
   - `--no-audio`: Omit audio track from the recording.
   - `--audio-only`: Record audio track only.
-  - `--slack-channel`, `--slack-message`: Send clip directly to Slack.
+  - `--slack`, `--slack-channel`, `--slack-message`: Send clip directly to Slack.
+  - `--s3`, `--s3-bucket`, `--s3-key`: Upload clip directly to S3-compatible storage.
 - **`audio`** (alias `record-audio`): Record an audio-only clip to WAV (PCM s16le).
   - Automatically decodes AAC, PCMU, PCMA, and L16 streams.
   - `--dur` / `-s`: Duration (default `10s`).
   - `--out`: Target WAV output path.
-  - Supports direct Slack upload flags.
+  - Supports direct Slack (`--slack`) and S3 (`--s3`) upload flags.
 
 **Examples:**
 ```sh
@@ -116,14 +118,22 @@ qam doctor
 qam doctor --probe
 ```
 
-### 5. Slack Management
-- **`slack set`**: Store Slack bot token and default channel into configuration.
+### 5. Slack & S3 Management
+- **`slack set`**: Store Slack bot token and default channel into configuration (used when `--slack` is passed).
   ```sh
   qam slack set --token "xoxb-your-token" --channel "#security"
   ```
 - **`slack test`**: Validate Slack upload functionality with a test file.
   ```sh
   qam slack test ./snapshot.jpg --channel "#test" --message "Test upload"
+  ```
+- **`s3 set`**: Store S3-compatible endpoint, region, bucket, and credentials in configuration (used when `--s3` is passed).
+  ```sh
+  qam s3 set --endpoint "http://127.0.0.1:9000" --bucket "my-cams" --access-key-id "minio" --secret-access-key "minio123"
+  ```
+- **`s3 test`**: Upload a test file and verify it with a `HEAD` request.
+  ```sh
+  qam s3 test ./snapshot.jpg --bucket "my-cams"
   ```
 
 ### 6. Shell Completion

@@ -35,6 +35,7 @@
   - [`qam watch` — Motion Detection & Actions](#qam-watch)
   - [`qam doctor` — Diagnostic Probing](#qam-doctor)
   - [`qam slack` — Manage Slack Integration](#qam-slack)
+  - [`qam s3` — Manage S3 Object Storage](#qam-s3)
   - [`qam completion` — Shell Autocompletions](#qam-completion)
 - [Camera Setup & Compatibility](#camera-setup--compatibility)
   - [TP-Link Tapo](#tp-link-tapo)
@@ -74,6 +75,7 @@ You can run `qam` in bare minimal environments, scratch Docker containers, or co
 | **Event Triggers & Action Hooks** | Execute shell actions or templated commands (`{camera}`, `{score}`, `{time}`) on motion with cooldown and optional JSON event logging. |
 | **ONVIF WS-Discovery** | Discover local cameras automatically over UDP multicast (`239.255.255.250:3702`) and inspect device details via SOAP. |
 | **Direct Slack Alerts** | Post snapshots and video recordings directly to Slack channels (`#channel`) or direct messages (`@user`) via the modern 3-step Slack upload API. |
+| **S3-Compatible Object Storage** | Upload snapshots, clips and audio to AWS S3 or any S3-compatible service (MinIO, R2, B2, Wasabi, Spaces, Ceph, Garage…) with built-in SigV4 signing; no AWS SDK needed. |
 | **Stream Diagnostics** | `qam doctor` tests network reachability, validates configurations, and probes RTSP handshakes with typed error reporting. |
 
 ---
@@ -209,8 +211,12 @@ qam snap kitchen --out snapshot.jpg
 qam snap kitchen --out snapshot.png
 qam snap kitchen --out snapshot.webp
 
-# Direct upload to Slack
+# Direct upload to Slack (or use --slack for default channel)
 qam snap kitchen --slack-channel #security --slack-message "Porch snapshot"
+
+# Direct upload to S3-compatible storage (or both --slack --s3)
+qam snap kitchen --s3
+qam snap kitchen --slack --s3
 
 # Override stream or transport on the fly
 qam snap kitchen --stream stream2 --rtsp-transport udp --out preview.jpg
@@ -230,8 +236,9 @@ qam clip kitchen --dur 5s --no-audio --out silent.mp4
 # Record using integer seconds flag
 qam clip kitchen -s 15 --out long.mp4
 
-# Record and upload directly to Slack
+# Record and upload directly to Slack or S3
 qam clip kitchen --dur 5s --slack-channel #alerts --slack-message "Motion clip"
+qam clip kitchen --dur 5s --s3
 ```
 
 ### `qam audio`
@@ -245,8 +252,9 @@ qam audio kitchen --dur 10s --out ambient.wav
 # Specify duration in seconds
 qam audio kitchen -s 30 --out speech.wav
 
-# Send audio clip to Slack
+# Send audio clip to Slack or S3
 qam audio kitchen --dur 10s --slack-channel #audio-logs
+qam audio kitchen --dur 10s --s3
 ```
 
 ### `qam watch`
@@ -294,7 +302,10 @@ qam doctor --probe --rtsp-transport udp --timeout 5s
 
 ### `qam slack`
 
-Configure and verify Slack integration for automated snapshot and clip distribution.
+Configure and verify Slack integration for snapshot and clip distribution.
+`qam slack set --channel` sets the *default target* used when `--slack` is passed; it does not turn on automatic uploads.
+
+> **Important:** Nothing is uploaded unless `--slack`/`--slack-channel` and/or `--s3`/`--s3-bucket` is passed on the command line. A configured default channel or bucket is only the default target.
 
 ```sh
 # Persist Slack bot token and default channel
@@ -303,6 +314,33 @@ qam slack set --token "xoxb-your-token" --channel "#security"
 # Test file upload
 qam slack test ./snapshot.jpg --channel "#test" --message "Test upload from qam"
 ```
+
+### `qam s3`
+
+Configure and verify S3-compatible object storage for snapshot, clip, and audio uploads.
+Like Slack, configuring `s3:` never uploads automatically; pass `--s3` (or `--s3-bucket <name>`) to `snap`, `clip`, or `audio`.
+
+```sh
+# Persist S3 settings in config (0600 permissions)
+qam s3 set --endpoint "http://127.0.0.1:9000" --bucket "my-cams" \
+  --access-key-id "minio" --secret-access-key "minio123"
+
+# Test upload + HEAD verification
+qam s3 test ./snapshot.jpg --bucket "my-cams"
+```
+
+#### Provider Cheat Sheet
+
+| Provider | Endpoint | Region | Addressing |
+| :--- | :--- | :--- | :--- |
+| AWS S3 | *(omit)* | e.g. `us-east-1` | `auto` (virtual-hosted) |
+| MinIO | `http://127.0.0.1:9000` | `us-east-1` | `auto` (path) |
+| Cloudflare R2 | `https://<accountid>.r2.cloudflarestorage.com` | `auto` | `auto` (path) |
+| Backblaze B2 | `https://s3.<region>.backblazeb2.com` | e.g. `eu-central-003` | `auto` (path) |
+| Wasabi | `https://s3.<region>.wasabisys.com` | e.g. `us-east-1` | `auto` (path) |
+| DigitalOcean Spaces | `https://<region>.digitaloceanspaces.com` | e.g. `nyc3` | `auto` (path) |
+| Garage | `http://127.0.0.1:3900` | `garage` | `auto` (path) |
+| GCS (XML interop) | `https://storage.googleapis.com` | `auto` | `auto` (path, HMAC keys) |
 
 ### `qam completion`
 
@@ -379,6 +417,19 @@ slack:
   token: "xoxb-your-slack-bot-token"
   default_channel: "#security"
 
+s3:
+  endpoint: "https://s3.eu-central-003.backblazeb2.com"   # optional; empty = AWS
+  region: "eu-central-003"                                  # optional; default us-east-1
+  bucket: "my-cams"
+  prefix: "qam/"                                            # optional key prefix
+  key_template: "{prefix}{camera}/{date}/{camera}-{timestamp}.{ext}"  # optional (UTC)
+  access_key_id: "..."
+  secret_access_key: "..."
+  session_token: ""                                         # optional (STS temporary creds)
+  addressing: "auto"                                        # auto | path | virtual
+  public_url: ""                                            # optional CDN/public base URL
+  storage_class: ""                                         # optional x-amz-storage-class
+
 cameras:
   - name: porch
     host: 192.168.1.100
@@ -406,6 +457,15 @@ cameras:
 | Variable | Description |
 | :--- | :--- |
 | `SLACK_TOKEN` | Slack Bot OAuth token (`xoxb-...`), overrides config file. |
+| `QAM_S3_BUCKET` | S3 bucket name (overrides config). |
+| `QAM_S3_ENDPOINT` / `AWS_ENDPOINT_URL_S3` / `AWS_ENDPOINT_URL` | S3 endpoint URL (overrides config). |
+| `QAM_S3_REGION` / `AWS_REGION` / `AWS_DEFAULT_REGION` | S3 region (default `us-east-1`). |
+| `QAM_S3_PREFIX` | Object key prefix (overrides config). |
+| `QAM_S3_ACCESS_KEY_ID` / `AWS_ACCESS_KEY_ID` | S3 access key ID (overrides config). |
+| `QAM_S3_SECRET_ACCESS_KEY` / `AWS_SECRET_ACCESS_KEY` | S3 secret access key (overrides config). |
+| `QAM_S3_SESSION_TOKEN` / `AWS_SESSION_TOKEN` | Optional STS session token. |
+| `QAM_S3_ADDRESSING` | Addressing style: `auto`, `path`, or `virtual`. |
+| `QAM_S3_PUBLIC_URL` | Optional public base URL for printed links. |
 | `XDG_CONFIG_HOME` | Custom base directory for user configuration files. |
 | `QAM_CAMERA` | Camera name populated during `qam watch` action commands. |
 | `QAM_SCORE` | Motion detection score (e.g. `0.245`) during `qam watch` actions. |

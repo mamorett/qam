@@ -64,3 +64,17 @@ This document records the Phase 0 spike findings and architecture decisions for 
   - $\text{diff} = |\text{mafd} - \text{prev\_mafd}|$
   - $\text{score} = \text{clamp}(\min(\text{mafd}, \text{diff}) / 100.0, 0.0, 1.0)$
 - **Verification**: Generated `tests/fixtures/scene_reference.json` comparing `ffmpeg` `lavfi.scene_score` against `SceneDetector::feed` across 5 deterministic 320×180 YUV420p frames (`solid_black` → `gray_50` → `checkerboard` → `horizontal_gradient` → `solid_white`). Maximum absolute difference is `4.17e-7` (within `ffmpeg`'s 6-decimal printout precision, well below the `< 0.02` requirement).
+
+## ADR-007: S3-Compatible Upload via Hand-Rolled SigV4 over `reqwest`
+
+- **Context**: `qam` needs to upload snapshots, clips, and audio to any S3-compatible object storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2, Wasabi, Spaces, Ceph, Garage, GCS XML interop) without bloating the binary or introducing OpenSSL.
+- **Alternatives Considered**:
+  1. `aws-sdk-s3` / `aws-config`: Heavy dependency tree; defaults to AWS-specific behaviors such as `x-amz-checksum-*` headers and `aws-chunked` streaming payloads that many S3-compatible servers reject.
+  2. `rust-s3` / `object_store`: Extra dependency surface and less direct control over exact header/redirect/retry behavior.
+- **Decision**: Implement AWS Signature Version 4 (`src/s3/sigv4.rs`) directly using `hmac = "0.12"` and `sha2 = "0.10"` over the existing `reqwest` (`rustls-tls`) client.
+- **Compatibility Rules**:
+  - Single `PUT Object` with explicit `Content-Length` and buffered body (no `Transfer-Encoding: chunked` or `aws-chunked`), up to 5 GiB.
+  - Real SHA-256 hex digest in `x-amz-content-sha256` (no `UNSIGNED-PAYLOAD`).
+  - No `x-amz-checksum-*`, `Content-MD5`, or `x-amz-acl` headers.
+  - Custom endpoints default to path-style addressing (`addressing: auto`); pure AWS endpoints with DNS-safe bucket names default to virtual-hosted-style.
+  - Redirects are not followed (`Policy::none()`) because redirected signed requests fail signature verification.

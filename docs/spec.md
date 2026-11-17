@@ -6,7 +6,7 @@
 
 1. **CLI Layer (`src/cli/`)**:
    - `root.rs`: Command line parsing via `clap`, exit codes, styling, global error handling.
-   - Subcommand handlers: `add.rs`, `list.rs`, `snap.rs`, `clip.rs`, `audio.rs`, `watch.rs`, `discover.rs`, `doctor.rs`, `slack_cmd.rs`, `version.rs`, `completion.rs`.
+   - Subcommand handlers: `add.rs`, `list.rs`, `snap.rs`, `clip.rs`, `audio.rs`, `watch.rs`, `discover.rs`, `doctor.rs`, `slack_cmd.rs`, `s3_cmd.rs`, `deliver.rs`, `version.rs`, `completion.rs`.
    - `flags.rs`: Parsers for Go-compatible durations, boolean flags, and RTSP transport/auth flags.
    - `resolve.rs`: Precedence resolution, template substitution, and URL construction.
 
@@ -28,4 +28,5 @@
 4. **Integration Layer**:
    - `src/discovery/`: ONVIF WS-Discovery UDP multicast probe and SOAP device info queries.
    - `src/slack.rs`: Slack Web API client implementing 3-step file upload flow.
+   - `src/s3/`: Pure-Rust SigV4 signer and S3-compatible object storage uploader.
    - `src/signals.rs`: Clean SIGINT/SIGTERM shutdown, container finalization, and exit code 130.

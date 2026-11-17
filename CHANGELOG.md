@@ -2,6 +2,19 @@
 
 All notable changes to `qam` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **S3-Compatible Object Storage**: Upload snapshots, clips, and audio to AWS S3 or any S3-compatible service (MinIO, R2, B2, Wasabi, Spaces, Ceph, Garage, GCS interop) using pure-Rust SigV4 signing over `reqwest` (`rustls`).
+- **Capture Flags**: Added `--s3`, `--s3-bucket`, `--s3-key`, `--s3-prefix`, `--s3-endpoint`, `--s3-region`, and `--slack` to `snap`, `clip`, and `audio`.
+- **`qam s3` Command**: Added `qam s3 set` and `qam s3 test` for configuring and verifying S3 credentials and endpoints.
+- **Configuration & Env**: Added `s3:` YAML config section and `QAM_S3_*` / `AWS_*` environment variable support.
+
+### Changed
+- **BREAKING — Explicit Slack Upload**: A configured `slack.default_channel` no longer uploads every capture automatically; pass `--slack` (or `--slack-channel`) explicitly.
+- **Post-Capture Delivery**: Unified Slack and S3 delivery in `src/cli/deliver.rs` (S3 first, then Slack; temp files are preserved if any requested upload fails).
+- **Snap JSON Output**: Added `s3_uploaded`, `s3_uri`, and `s3_url` fields alongside `path` and `slack_uploaded`.
+
 ## [0.4.0] - 2026-11-12
 
 ### Rewritten in 100% Pure Rust (`qam`)
