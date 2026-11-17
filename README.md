@@ -320,13 +320,67 @@ qam slack test ./snapshot.jpg --channel "#test" --message "Test upload from qam"
 Configure and verify S3-compatible object storage for snapshot, clip, and audio uploads.
 Like Slack, configuring `s3:` never uploads automatically; pass `--s3` (or `--s3-bucket <name>`) to `snap`, `clip`, or `audio`.
 
+#### 1. Configure via `qam s3 set`
+
+> **Important (Shell Quoting):** Always wrap `--access-key-id` and `--secret-access-key` in **single quotes** (`'...'`), not double quotes or unquoted. S3 secret keys often contain `$`, `/`, `+`, or `!`, which bash/zsh will expand or corrupt if left unquoted or double-quoted.
+
 ```sh
-# Persist S3 settings in config (0600 permissions)
-qam s3 set --endpoint "http://127.0.0.1:9000" --bucket "my-cams" \
-  --access-key-id "minio" --secret-access-key "minio123"
+# Example: Backblaze B2 / Wasabi / any S3-compatible provider
+qam s3 set \
+  --endpoint 'https://s3.eu-central-003.backblazeb2.com' \
+  --region 'eu-central-003' \
+  --bucket 'my-cams' \
+  --access-key-id '003abc123...' \
+  --secret-access-key 'K003secret$with+special/chars'
+
+# Example: Local MinIO
+qam s3 set \
+  --endpoint 'http://127.0.0.1:9000' \
+  --region 'us-east-1' \
+  --bucket 'my-cams' \
+  --access-key-id 'minio' \
+  --secret-access-key 'minio123'
+
+# Example: Cloudflare R2 (region is always "auto")
+qam s3 set \
+  --endpoint 'https://<accountid>.r2.cloudflarestorage.com' \
+  --region 'auto' \
+  --bucket 'my-cams' \
+  --access-key-id '<r2-access-key-id>' \
+  --secret-access-key '<r2-secret-access-key>'
+
+# Example: AWS S3 (omit --endpoint)
+qam s3 set \
+  --region 'eu-west-1' \
+  --bucket 'my-cams' \
+  --access-key-id 'AKIA...' \
+  --secret-access-key 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
 
 # Test upload + HEAD verification
-qam s3 test ./snapshot.jpg --bucket "my-cams"
+qam s3 test ./snapshot.jpg
+```
+
+#### 2. Where to set `--region` (and other S3 settings)
+
+You can set the region in any of these places (highest priority first):
+1. **Per-command flag:** `qam snap kitchen --s3 --s3-region eu-central-003`
+2. **Environment variable:** `QAM_S3_REGION=eu-central-003` (or `AWS_REGION` / `AWS_DEFAULT_REGION`)
+3. **Config file (`~/.config/qam/config.yaml`):** `s3.region` (written by `qam s3 set --region ...`)
+4. **Default:** `us-east-1` if nothing is set
+
+#### 3. Example `config.yaml` for S3
+
+You can also edit `~/.config/qam/config.yaml` directly (see [Configuration](#configuration) for the full file):
+
+```yaml
+s3:
+  endpoint: "https://s3.eu-central-003.backblazeb2.com"   # omit or leave empty for AWS S3
+  region: "eu-central-003"                                  # e.g. "us-east-1", "eu-west-1", or "auto" for R2
+  bucket: "my-cams"
+  prefix: "qam/"                                            # optional key prefix
+  access_key_id: "your-access-key-id"
+  secret_access_key: "your-secret-access-key"
+  addressing: "auto"                                        # auto | path | virtual
 ```
 
 #### Provider Cheat Sheet
