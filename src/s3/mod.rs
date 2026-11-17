@@ -1,17 +1,23 @@
 pub mod sigv4;
 
 use chrono::{DateTime, Utc};
+use quick_xml::Reader;
+use quick_xml::events::Event;
+use reqwest::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::fmt;
 use std::net::Ipv4Addr;
 use std::path::Path;
 use std::str::FromStr;
+use std::time::Duration;
 use url::Url;
 
+use crate::cli::style::Styler;
 use crate::config::Config;
 use crate::errors::QamError;
 
 pub const DEFAULT_S3_REGION: &str = "us-east-1";
 pub const DEFAULT_KEY_TEMPLATE: &str = "{prefix}{camera}/{date}/{camera}-{timestamp}.{ext}";
+pub const MAX_SINGLE_PUT_BYTES: u64 = 5 * 1024 * 1024 * 1024; // 5 GiB
 
 /// CLI flags for S3-compatible object storage upload.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -435,6 +441,413 @@ pub fn render_object_key(template: &str, ctx: &KeyContext<'_>) -> Result<String,
     }
 
     Ok(key)
+}
+
+/// Result of a successful S3 object upload.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct S3UploadResult {
+    pub bucket: String,
+    pub key: String,
+    pub uri: String,
+    pub url: Option<String>,
+    pub etag: Option<String>,
+}
+
+/// S3-compatible object storage uploader using pure-Rust SigV4 over `reqwest`.
+#[derive(Clone, Debug)]
+pub struct S3Uploader {
+    pub settings: S3Settings,
+    client: reqwest::Client,
+}
+
+impl S3Uploader {
+    pub fn new(settings: S3Settings) -> Self {
+        let client = reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(300))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap_or_default();
+
+        Self { settings, client }
+    }
+
+    pub async fn put_object(&self, path: &Path, key: &str) -> Result<S3UploadResult, QamError> {
+        let meta = tokio::fs::metadata(path)
+            .await
+            .map_err(|e| QamError::S3(format!("stat file: {e}")))?;
+        if meta.len() > MAX_SINGLE_PUT_BYTES {
+            return Err(QamError::S3(format!(
+                "file {} ({} bytes) exceeds 5 GiB single-PUT S3 limit",
+                path.display(),
+                meta.len()
+            )));
+        }
+
+        let body = tokio::fs::read(path)
+            .await
+            .map_err(|e| QamError::S3(format!("reading file: {e}")))?;
+        let payload_sha256 = sigv4::sha256_hex(&body);
+        let mime_type = crate::mime::mime_for_path(path);
+
+        let clean_key = key.trim_start_matches('/');
+        let (url, host_header, canonical_uri) = self.settings.object_url(clean_key)?;
+
+        let mut last_err = None;
+        for attempt in 0..2 {
+            if attempt > 0 {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+
+            let now = Utc::now();
+            let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+            let mut sign_headers: Vec<(&str, &str)> = vec![
+                ("content-type", mime_type),
+                ("host", &host_header),
+                ("x-amz-content-sha256", &payload_sha256),
+                ("x-amz-date", &amz_date),
+            ];
+            if let Some(ref tok) = self.settings.session_token {
+                sign_headers.push(("x-amz-security-token", tok));
+            }
+            if let Some(ref sc) = self.settings.storage_class {
+                sign_headers.push(("x-amz-storage-class", sc));
+            }
+
+            let signed = sigv4::sign_request(
+                "PUT",
+                &canonical_uri,
+                &[],
+                &sign_headers,
+                &payload_sha256,
+                &self.settings.access_key_id,
+                &self.settings.secret_access_key,
+                &self.settings.region,
+                now,
+            );
+            tracing::debug!("s3 canonical request:\n{}", signed.canonical_request);
+
+            let mut req_headers = HeaderMap::new();
+            req_headers.insert(CONTENT_LENGTH, HeaderValue::from(body.len() as u64));
+            req_headers.insert(CONTENT_TYPE, HeaderValue::from_static(mime_type));
+            insert_header(&mut req_headers, "x-amz-date", &signed.amz_date)?;
+            insert_header(&mut req_headers, "x-amz-content-sha256", &payload_sha256)?;
+            insert_header(
+                &mut req_headers,
+                AUTHORIZATION.as_str(),
+                &signed.authorization_header,
+            )?;
+            if let Some(ref tok) = self.settings.session_token {
+                insert_header(&mut req_headers, "x-amz-security-token", tok)?;
+            }
+            if let Some(ref sc) = self.settings.storage_class {
+                insert_header(&mut req_headers, "x-amz-storage-class", sc)?;
+            }
+
+            match self
+                .client
+                .put(url.clone())
+                .headers(req_headers)
+                .body(body.clone())
+                .send()
+                .await
+            {
+                Ok(resp) => {
+                    let status = resp.status();
+                    if status.is_success() {
+                        let etag = resp
+                            .headers()
+                            .get("etag")
+                            .and_then(|v| v.to_str().ok())
+                            .map(|s| s.to_string());
+                        let uri = format!("s3://{}/{clean_key}", self.settings.bucket);
+                        let public_url = self.settings.public_url.as_ref().map(|base| {
+                            format!(
+                                "{}/{}",
+                                base.trim_end_matches('/'),
+                                sigv4::uri_encode(clean_key, false)
+                            )
+                        });
+                        return Ok(S3UploadResult {
+                            bucket: self.settings.bucket.clone(),
+                            key: clean_key.to_string(),
+                            uri,
+                            url: public_url,
+                            etag,
+                        });
+                    }
+
+                    let bucket_region = resp
+                        .headers()
+                        .get("x-amz-bucket-region")
+                        .and_then(|v| v.to_str().ok())
+                        .map(|s| s.to_string());
+                    let resp_body = resp.text().await.unwrap_or_default();
+                    let err = format_s3_error(
+                        "PUT",
+                        &self.settings.bucket,
+                        clean_key,
+                        status.as_u16(),
+                        &resp_body,
+                        bucket_region.as_deref(),
+                    );
+                    if is_retryable_status(status.as_u16()) && attempt == 0 {
+                        last_err = Some(err);
+                        continue;
+                    }
+                    return Err(err);
+                }
+                Err(e) => {
+                    let err = QamError::S3(format!("S3 PUT network error: {e}"));
+                    if attempt == 0 {
+                        last_err = Some(err);
+                        continue;
+                    }
+                    return Err(err);
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| QamError::S3("S3 PUT failed".to_string())))
+    }
+
+    pub async fn head_object(&self, key: &str) -> Result<(), QamError> {
+        self.simple_object_request("HEAD", key).await
+    }
+
+    pub async fn delete_object(&self, key: &str) -> Result<(), QamError> {
+        self.simple_object_request("DELETE", key).await
+    }
+
+    async fn simple_object_request(&self, method: &str, key: &str) -> Result<(), QamError> {
+        let clean_key = key.trim_start_matches('/');
+        let (url, host_header, canonical_uri) = self.settings.object_url(clean_key)?;
+        let empty_sha256 = sigv4::sha256_hex(b"");
+
+        let mut last_err = None;
+        for attempt in 0..2 {
+            if attempt > 0 {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+
+            let now = Utc::now();
+            let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+            let mut sign_headers: Vec<(&str, &str)> = vec![
+                ("host", &host_header),
+                ("x-amz-content-sha256", &empty_sha256),
+                ("x-amz-date", &amz_date),
+            ];
+            if let Some(ref tok) = self.settings.session_token {
+                sign_headers.push(("x-amz-security-token", tok));
+            }
+
+            let signed = sigv4::sign_request(
+                method,
+                &canonical_uri,
+                &[],
+                &sign_headers,
+                &empty_sha256,
+                &self.settings.access_key_id,
+                &self.settings.secret_access_key,
+                &self.settings.region,
+                now,
+            );
+            tracing::debug!("s3 canonical request:\n{}", signed.canonical_request);
+
+            let mut req_headers = HeaderMap::new();
+            insert_header(&mut req_headers, "x-amz-date", &signed.amz_date)?;
+            insert_header(&mut req_headers, "x-amz-content-sha256", &empty_sha256)?;
+            insert_header(
+                &mut req_headers,
+                AUTHORIZATION.as_str(),
+                &signed.authorization_header,
+            )?;
+            if let Some(ref tok) = self.settings.session_token {
+                insert_header(&mut req_headers, "x-amz-security-token", tok)?;
+            }
+
+            let req_method = reqwest::Method::from_bytes(method.as_bytes())
+                .map_err(|e| QamError::S3(format!("invalid HTTP method {method}: {e}")))?;
+
+            match self
+                .client
+                .request(req_method, url.clone())
+                .headers(req_headers)
+                .send()
+                .await
+            {
+                Ok(resp) => {
+                    let status = resp.status();
+                    if status.is_success() {
+                        return Ok(());
+                    }
+                    let bucket_region = resp
+                        .headers()
+                        .get("x-amz-bucket-region")
+                        .and_then(|v| v.to_str().ok())
+                        .map(|s| s.to_string());
+                    let resp_body = resp.text().await.unwrap_or_default();
+                    let err = format_s3_error(
+                        method,
+                        &self.settings.bucket,
+                        clean_key,
+                        status.as_u16(),
+                        &resp_body,
+                        bucket_region.as_deref(),
+                    );
+                    if is_retryable_status(status.as_u16()) && attempt == 0 {
+                        last_err = Some(err);
+                        continue;
+                    }
+                    return Err(err);
+                }
+                Err(e) => {
+                    let err = QamError::S3(format!("S3 {method} network error: {e}"));
+                    if attempt == 0 {
+                        last_err = Some(err);
+                        continue;
+                    }
+                    return Err(err);
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| QamError::S3(format!("S3 {method} failed"))))
+    }
+}
+
+fn insert_header(headers: &mut HeaderMap, name: &str, value: &str) -> Result<(), QamError> {
+    let header_name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+        .map_err(|e| QamError::S3(format!("invalid header name {name}: {e}")))?;
+    let header_val = HeaderValue::from_str(value)
+        .map_err(|e| QamError::S3(format!("invalid header value for {name}: {e}")))?;
+    headers.insert(header_name, header_val);
+    Ok(())
+}
+
+fn is_retryable_status(status: u16) -> bool {
+    matches!(status, 500 | 502 | 503 | 504)
+}
+
+#[derive(Default)]
+struct S3XmlError {
+    code: String,
+    message: String,
+}
+
+fn parse_s3_xml_error(body: &str) -> Option<S3XmlError> {
+    if !body.trim_start().starts_with('<') {
+        return None;
+    }
+    let mut reader = Reader::from_str(body);
+    let mut current_tag = String::new();
+    let mut out = S3XmlError::default();
+
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) => {
+                current_tag = String::from_utf8_lossy(e.name().as_ref()).to_string();
+            }
+            Ok(Event::End(_)) => {
+                current_tag.clear();
+            }
+            Ok(Event::Text(e)) => {
+                if let Ok(text) = e.unescape() {
+                    match current_tag.as_str() {
+                        "Code" => out.code.push_str(&text),
+                        "Message" => out.message.push_str(&text),
+                        _ => {}
+                    }
+                }
+            }
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+    }
+
+    if out.code.is_empty() && out.message.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
+fn format_s3_error(
+    method: &str,
+    bucket: &str,
+    key: &str,
+    status: u16,
+    body: &str,
+    bucket_region: Option<&str>,
+) -> QamError {
+    let parsed = parse_s3_xml_error(body);
+    let code = parsed.as_ref().map(|p| p.code.as_str()).unwrap_or("");
+    let message = parsed.as_ref().map(|p| p.message.as_str()).unwrap_or("");
+
+    let mut msg = format!("S3 {method} s3://{bucket}/{key} failed: HTTP {status}");
+    if !code.is_empty() {
+        msg.push(' ');
+        msg.push_str(code);
+    }
+    if !message.is_empty() {
+        msg.push_str(": ");
+        msg.push_str(message);
+    }
+
+    let hint = match (code, status) {
+        ("SignatureDoesNotMatch" | "InvalidAccessKeyId", _) | (_, 403) => Some(
+            "auth failed: check access key/secret, region, and addressing (try `addressing: path`)"
+                .to_string(),
+        ),
+        ("RequestTimeTooSkewed", _) => Some("system clock is off; sync time (NTP)".to_string()),
+        ("NoSuchBucket", _) | (_, 404) => Some("bucket not found".to_string()),
+        ("AuthorizationHeaderMalformed" | "PermanentRedirect", _) | (_, 301 | 307) => {
+            let mut h = "wrong region or endpoint".to_string();
+            if let Some(r) = bucket_region {
+                h.push_str(&format!(" (bucket region: {r})"));
+            }
+            Some(h)
+        }
+        _ => None,
+    };
+
+    if let Some(h) = hint {
+        msg.push_str("\nHints: ");
+        msg.push_str(&h);
+    }
+
+    QamError::S3(msg)
+}
+
+/// Uploads `file_path` to S3 and prints progress matching `maybe_upload_to_slack`.
+pub async fn maybe_upload_to_s3(
+    file_path: &Path,
+    settings: &S3Settings,
+    key: &str,
+    sty: &Styler,
+) -> Result<S3UploadResult, QamError> {
+    let blue_arrow = sty.accent("→");
+    let green_check = sty.ok("✔");
+
+    let clean_key = key.trim_start_matches('/');
+    println!(
+        "{} uploading {} to s3://{}/{}…",
+        blue_arrow,
+        file_path.display(),
+        settings.bucket,
+        clean_key
+    );
+
+    let uploader = S3Uploader::new(settings.clone());
+    let res = uploader.put_object(file_path, clean_key).await?;
+
+    if let Some(ref url) = res.url {
+        println!("{} S3 upload complete! {} ({})", green_check, res.uri, url);
+    } else {
+        println!("{} S3 upload complete! {}", green_check, res.uri);
+    }
+
+    Ok(res)
 }
 
 #[cfg(test)]
