@@ -88,6 +88,70 @@ impl SlackConfig {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct S3Config {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub endpoint: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub region: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub bucket: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub prefix: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub key_template: String,
+    #[serde(
+        default,
+        alias = "access_key",
+        skip_serializing_if = "String::is_empty"
+    )]
+    pub access_key_id: String,
+    #[serde(
+        default,
+        alias = "secret_key",
+        skip_serializing_if = "String::is_empty"
+    )]
+    pub secret_access_key: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub session_token: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub addressing: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub public_url: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub storage_class: String,
+}
+
+impl S3Config {
+    pub fn is_empty(&self) -> bool {
+        self.endpoint.is_empty()
+            && self.region.is_empty()
+            && self.bucket.is_empty()
+            && self.prefix.is_empty()
+            && self.key_template.is_empty()
+            && self.access_key_id.is_empty()
+            && self.secret_access_key.is_empty()
+            && self.session_token.is_empty()
+            && self.addressing.is_empty()
+            && self.public_url.is_empty()
+            && self.storage_class.is_empty()
+    }
+
+    pub fn normalize(&mut self) {
+        self.endpoint = self.endpoint.trim().trim_end_matches('/').to_string();
+        self.region = self.region.trim().to_string();
+        self.bucket = self.bucket.trim().to_string();
+        self.prefix = self.prefix.trim().to_string();
+        self.key_template = self.key_template.trim().to_string();
+        self.access_key_id = self.access_key_id.trim().to_string();
+        self.secret_access_key = self.secret_access_key.trim().to_string();
+        self.session_token = self.session_token.trim().to_string();
+        self.addressing = self.addressing.trim().to_ascii_lowercase();
+        self.public_url = self.public_url.trim().trim_end_matches('/').to_string();
+        self.storage_class = self.storage_class.trim().to_string();
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Camera {
     #[serde(default)]
     pub name: String,
@@ -168,6 +232,12 @@ pub struct Config {
         skip_serializing_if = "SlackConfig::is_empty"
     )]
     pub slack: SlackConfig,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_null_as_default",
+        skip_serializing_if = "S3Config::is_empty"
+    )]
+    pub s3: S3Config,
 }
 
 impl Config {
@@ -176,6 +246,7 @@ impl Config {
         for cam in &mut self.cameras {
             cam.normalize();
         }
+        self.s3.normalize();
     }
 
     /// Inserts or updates a camera by case-insensitive name match.
@@ -475,5 +546,58 @@ unknown_field: true
         cfg.normalize();
         assert!(cfg.cameras.is_empty());
         assert_eq!(cfg.defaults.rtsp_transport, "tcp");
+    }
+
+    #[test]
+    fn s3_yaml_roundtrip_and_normalize() {
+        let yaml = r#"
+s3:
+  endpoint: "https://s3.eu-central-003.backblazeb2.com/"
+  region: "eu-central-003"
+  bucket: "my-cams"
+  prefix: "qam/"
+  key_template: "{prefix}{camera}/{date}/{camera}-{timestamp}.{ext}"
+  access_key_id: "AKID123"
+  secret_access_key: "SECRET456"
+  session_token: "TOK789"
+  addressing: "PATH"
+  public_url: "https://cdn.example.com/"
+  storage_class: "STANDARD_IA"
+"#;
+        let mut cfg: Config = serde_yaml::from_str(yaml).unwrap();
+        cfg.normalize();
+        assert_eq!(cfg.s3.endpoint, "https://s3.eu-central-003.backblazeb2.com");
+        assert_eq!(cfg.s3.addressing, "path");
+        assert_eq!(cfg.s3.public_url, "https://cdn.example.com");
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("config.yaml");
+        save_to_path(&path, &cfg).unwrap();
+        let reloaded = load_from_path(&path).unwrap();
+        assert_eq!(reloaded, cfg);
+    }
+
+    #[test]
+    fn s3_null_and_empty_omitted_on_serialize() {
+        let yaml_null = "s3: null\n";
+        let cfg_null: Config = serde_yaml::from_str(yaml_null).unwrap();
+        assert_eq!(cfg_null.s3, S3Config::default());
+
+        let cfg_empty = Config::default();
+        let serialized = serde_yaml::to_string(&cfg_empty).unwrap();
+        assert!(!serialized.contains("s3:"));
+    }
+
+    #[test]
+    fn s3_yaml_aliases() {
+        let yaml = r#"
+s3:
+  bucket: "b"
+  access_key: "AK"
+  secret_key: "SK"
+"#;
+        let cfg: Config = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(cfg.s3.access_key_id, "AK");
+        assert_eq!(cfg.s3.secret_access_key, "SK");
     }
 }
