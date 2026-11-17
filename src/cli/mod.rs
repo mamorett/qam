@@ -2,6 +2,7 @@ pub mod add;
 pub mod audio;
 pub mod clip;
 pub mod completion;
+pub mod deliver;
 pub mod discover;
 pub mod doctor;
 pub mod flags;

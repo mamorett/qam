@@ -3,12 +3,11 @@ use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::cli::deliver::{DeliveryRequest, SlackFlags, deliver};
 use crate::cli::flags::{RtspAuth, Transport, parse_bool_flag, parse_duration_flag};
 use crate::cli::resolve::resolve_rtsp_url;
-use crate::cli::style::Styler;
 use crate::errors::QamError;
 use crate::media::recorder::{ClipRecordOptions, record_media};
-use crate::slack::{maybe_upload_to_slack, resolve_slack_channel, resolve_slack_token};
 
 #[derive(Args, Debug)]
 #[command(args_conflicts_with_subcommands = true)]
@@ -239,34 +238,17 @@ pub async fn run_clip(
     .await?;
 
     // 9. Slack upload if configured
-    let env_token = std::env::var("SLACK_TOKEN").ok();
-    let slack_token = resolve_slack_token(
-        args.slack_token.as_deref().unwrap_or(""),
-        &cfg,
-        env_token.as_deref(),
-    );
-    let slack_channel = resolve_slack_channel(args.slack_channel.as_deref().unwrap_or(""), &cfg);
-
-    if args.slack_channel.is_some() || !slack_channel.is_empty() {
-        if slack_channel.is_empty() {
-            return Err(QamError::Slack(
-                "no Slack channel specified: pass a channel (e.g. --slack-channel \"#cam\" or --slack-channel=#cam) or configure a default channel with 'qam slack set --channel <channel>'. Note: in shells like zsh/bash, an unquoted '#' starts a comment.".to_string(),
-            ));
-        }
-        let sty = Styler::with_color(Styler::is_color_enabled());
-        maybe_upload_to_slack(
-            Path::new(&out_path),
-            &slack_token,
-            &slack_channel,
-            args.slack_message.as_deref().unwrap_or(""),
-            &sty,
-        )
-        .await?;
-
-        if is_temp_file {
-            let _ = std::fs::remove_file(&out_path);
-        }
-    }
+    deliver(DeliveryRequest {
+        out_path: &out_path,
+        is_temp_file,
+        cfg: &cfg,
+        slack: SlackFlags {
+            channel: args.slack_channel,
+            token: args.slack_token,
+            message: args.slack_message,
+        },
+    })
+    .await?;
 
     Ok(())
 }
