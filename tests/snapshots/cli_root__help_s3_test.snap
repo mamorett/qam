@@ -1,0 +1,18 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Test S3 upload with a file
+
+Usage: qam s3 test [OPTIONS] <file>
+
+Arguments:
+  <file>  File to upload
+
+Options:
+      --bucket <bucket>      S3 bucket (overrides default)
+      --config <path>        Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+      --key <key>            Object key or template
+      --endpoint <endpoint>  S3 endpoint URL (overrides default)
+      --region <region>      S3 region (overrides default)
+  -h, --help                 Print help

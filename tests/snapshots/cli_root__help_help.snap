@@ -22,6 +22,7 @@ Commands:
   watch       Run motion detection and execute an action
   doctor      Run basic checks (media engine, config present, camera ports reachable)
   slack       Manage Slack configuration
+  s3          Manage S3-compatible object storage configuration
   version     Show qam version
   completion  Generate the autocompletion script for qam for the specified shell
   help        Print this message or the help of the given subcommand(s)
@@ -41,6 +42,7 @@ Examples:
   --stream stream2
   qam snap kitchen --out shot.jpg
   qam snap kitchen --slack-channel #security --slack-message "Kitchen check!"
+  qam snap kitchen --s3
   qam clip kitchen --dur 5s --no-audio --out clip.mp4
   qam clip kitchen --dur 10s --slack-channel @steve
   qam audio kitchen --seconds 10 --out audio.wav

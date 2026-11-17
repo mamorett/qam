@@ -156,6 +156,9 @@ fn test_help_snapshots() {
         vec!["slack", "--help"],
         vec!["slack", "set", "--help"],
         vec!["slack", "test", "--help"],
+        vec!["s3", "--help"],
+        vec!["s3", "set", "--help"],
+        vec!["s3", "test", "--help"],
         vec!["version", "--help"],
         vec!["completion", "--help"],
     ];

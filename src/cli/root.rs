@@ -27,6 +27,7 @@ pub fn example_text() -> &'static str {
     "  qam add --name kitchen --host 192.168.0.175 --user tapo --pass secret --rtsp-transport udp --stream stream2\n  \
        qam snap kitchen --out shot.jpg\n  \
        qam snap kitchen --slack-channel #security --slack-message \"Kitchen check!\"\n  \
+       qam snap kitchen --s3\n  \
        qam clip kitchen --dur 5s --no-audio --out clip.mp4\n  \
        qam clip kitchen --dur 10s --slack-channel @steve\n  \
        qam audio kitchen --seconds 10 --out audio.wav\n  \
@@ -69,6 +70,7 @@ pub fn build_cli(color: bool) -> Command {
             build_watch_cmd(),
             build_doctor_cmd(),
             build_slack_cmd(),
+            build_s3_cmd(),
             build_version_cmd(),
             build_completion_cmd(),
         ])
@@ -600,6 +602,86 @@ fn build_slack_cmd() -> Command {
         ])
 }
 
+fn build_s3_cmd() -> Command {
+    Command::new("s3")
+        .about("Manage S3-compatible object storage configuration")
+        .subcommands([
+            Command::new("set")
+                .about("Store S3 credentials and defaults in config")
+                .arg(
+                    Arg::new("endpoint")
+                        .long("endpoint")
+                        .help("S3 endpoint URL"),
+                )
+                .arg(
+                    Arg::new("region")
+                        .long("region")
+                        .help("S3 region (default us-east-1)"),
+                )
+                .arg(Arg::new("bucket").long("bucket").help("Default S3 bucket"))
+                .arg(
+                    Arg::new("prefix")
+                        .long("prefix")
+                        .help("Default object key prefix"),
+                )
+                .arg(
+                    Arg::new("key-template")
+                        .long("key-template")
+                        .help("Default object key template"),
+                )
+                .arg(
+                    Arg::new("access-key-id")
+                        .long("access-key-id")
+                        .help("S3 access key ID"),
+                )
+                .arg(
+                    Arg::new("secret-access-key")
+                        .long("secret-access-key")
+                        .help("S3 secret access key"),
+                )
+                .arg(
+                    Arg::new("session-token")
+                        .long("session-token")
+                        .help("Optional STS session token"),
+                )
+                .arg(
+                    Arg::new("addressing")
+                        .long("addressing")
+                        .help("Addressing style: auto|path|virtual"),
+                )
+                .arg(
+                    Arg::new("public-url")
+                        .long("public-url")
+                        .help("Optional public base URL for printed links"),
+                )
+                .arg(
+                    Arg::new("storage-class")
+                        .long("storage-class")
+                        .help("Optional x-amz-storage-class header value"),
+                )
+                .arg(trailing_ignored_arg()),
+            Command::new("test")
+                .about("Test S3 upload with a file")
+                .arg(Arg::new("file").required(true).help("File to upload"))
+                .arg(
+                    Arg::new("bucket")
+                        .long("bucket")
+                        .help("S3 bucket (overrides default)"),
+                )
+                .arg(Arg::new("key").long("key").help("Object key or template"))
+                .arg(
+                    Arg::new("endpoint")
+                        .long("endpoint")
+                        .help("S3 endpoint URL (overrides default)"),
+                )
+                .arg(
+                    Arg::new("region")
+                        .long("region")
+                        .help("S3 region (overrides default)"),
+                ),
+        ])
+}
+
 fn build_version_cmd() -> Command {
     Command::new("version")
         .about("Show qam version")
@@ -742,6 +824,46 @@ where
             }
             _ => {
                 return Err(QamError::Usage("subcommand required for slack".into()));
+            }
+        },
+        Some(("s3", sub)) => match sub.subcommand() {
+            Some(("set", set_sub)) => {
+                let args = crate::cli::s3_cmd::S3SetArgs {
+                    endpoint: set_sub.get_one::<String>("endpoint").cloned(),
+                    region: set_sub.get_one::<String>("region").cloned(),
+                    bucket: set_sub.get_one::<String>("bucket").cloned(),
+                    prefix: set_sub.get_one::<String>("prefix").cloned(),
+                    key_template: set_sub.get_one::<String>("key-template").cloned(),
+                    access_key_id: set_sub.get_one::<String>("access-key-id").cloned(),
+                    secret_access_key: set_sub.get_one::<String>("secret-access-key").cloned(),
+                    session_token: set_sub.get_one::<String>("session-token").cloned(),
+                    addressing: set_sub.get_one::<String>("addressing").cloned(),
+                    public_url: set_sub.get_one::<String>("public-url").cloned(),
+                    storage_class: set_sub.get_one::<String>("storage-class").cloned(),
+                };
+                crate::cli::s3_cmd::execute_set(args, config_path)?;
+            }
+            Some(("test", test_sub)) => {
+                let file = test_sub
+                    .get_one::<String>("file")
+                    .cloned()
+                    .unwrap_or_default();
+                let bucket = test_sub.get_one::<String>("bucket").cloned();
+                let key = test_sub.get_one::<String>("key").cloned();
+                let endpoint = test_sub.get_one::<String>("endpoint").cloned();
+                let region = test_sub.get_one::<String>("region").cloned();
+                crate::cli::s3_cmd::execute_test(
+                    std::path::Path::new(&file),
+                    bucket,
+                    key,
+                    endpoint,
+                    region,
+                    config_path,
+                )
+                .await?;
+            }
+            _ => {
+                return Err(QamError::Usage("subcommand required for s3".into()));
             }
         },
         Some(("discover", sub)) => {

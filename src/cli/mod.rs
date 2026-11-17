@@ -9,6 +9,7 @@ pub mod flags;
 pub mod list;
 pub mod resolve;
 pub mod root;
+pub mod s3_cmd;
 pub mod slack_cmd;
 pub mod snap;
 pub mod style;

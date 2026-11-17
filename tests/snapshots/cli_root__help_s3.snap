@@ -1,0 +1,16 @@
+---
+source: tests/cli_root.rs
+expression: out
+---
+Manage S3-compatible object storage configuration
+
+Usage: qam s3 [OPTIONS] [COMMAND]
+
+Commands:
+  set   Store S3 credentials and defaults in config
+  test  Test S3 upload with a file
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+      --config <path>  Path to config file (default: $XDG_CONFIG_HOME/camsnap/config.yaml)
+  -h, --help           Print help
