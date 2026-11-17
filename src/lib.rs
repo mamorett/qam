@@ -5,6 +5,7 @@ pub mod errors;
 pub mod media;
 pub mod mime;
 pub mod rtsp_url;
+pub mod s3;
 pub mod signals;
 pub mod slack;
 pub mod timefmt;
