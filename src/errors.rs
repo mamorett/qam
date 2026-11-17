@@ -20,6 +20,9 @@ pub enum QamError {
     #[error("{0}")]
     Slack(String),
 
+    #[error("{0}")]
+    S3(String),
+
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
@@ -56,7 +59,13 @@ fn contains_code(msg: &str, code: &str) -> bool {
 pub fn classify_message(s: &str) -> &'static str {
     let primary = s.split("\nHints:").next().unwrap_or(s);
     let msg = primary.to_ascii_lowercase();
-    if contains_code(&msg, "401") || msg.contains("unauthorized") || msg.contains("auth") {
+    if contains_code(&msg, "401")
+        || contains_code(&msg, "403")
+        || msg.contains("unauthorized")
+        || msg.contains("auth")
+        || msg.contains("signaturedoesnotmatch")
+        || msg.contains("invalidaccesskeyid")
+    {
         "auth"
     } else if msg.contains("connection refused")
         || msg.contains("actively refused")
@@ -70,7 +79,10 @@ pub fn classify_message(s: &str) -> &'static str {
         || msg.contains("etimedout")
     {
         "network-timeout"
-    } else if msg.contains("not found") || contains_code(&msg, "404") {
+    } else if msg.contains("not found")
+        || contains_code(&msg, "404")
+        || msg.contains("nosuchbucket")
+    {
         "not-found"
     } else {
         "unknown"
@@ -136,6 +148,32 @@ mod tests {
             assert_eq!(classify_message(input), want, "classify_message({input:?})");
             let qam_err = QamError::Media(input.to_string());
             assert_eq!(classify(&qam_err), want, "classify({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_classify_s3_errors() {
+        let cases = [
+            (
+                "S3 PUT s3://b/k failed: HTTP 403 SignatureDoesNotMatch: ... \nHints: auth failed",
+                "auth",
+            ),
+            (
+                "S3 auth: no credentials found (set QAM_S3_ACCESS_KEY_ID/...)",
+                "auth",
+            ),
+            (
+                "S3 PUT s3://b/k failed: HTTP 404 NoSuchBucket: The specified bucket does not exist\nHints: bucket not found",
+                "not-found",
+            ),
+            (
+                "S3 PUT network error: operation timed out",
+                "network-timeout",
+            ),
+        ];
+        for (input, want) in cases {
+            let err = QamError::S3(input.to_string());
+            assert_eq!(classify(&err), want, "classify({input:?})");
         }
     }
 

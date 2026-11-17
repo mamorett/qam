@@ -3,6 +3,7 @@ pub mod config;
 pub mod discovery;
 pub mod errors;
 pub mod media;
+pub mod mime;
 pub mod rtsp_url;
 pub mod signals;
 pub mod slack;

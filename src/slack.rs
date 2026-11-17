@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::cli::style::Styler;
 use crate::config::Config;
 use crate::errors::QamError;
+pub use crate::mime::mime_for_path;
 
 pub const DEFAULT_SLACK_API_BASE: &str = "https://slack.com/api";
 
@@ -477,26 +478,6 @@ pub fn is_slack_id(s: &str) -> bool {
     }
     s.chars()
         .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
-}
-
-pub fn mime_for_path(path: &Path) -> &'static str {
-    let ext = path
-        .extension()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_ascii_lowercase())
-        .unwrap_or_default();
-
-    match ext.as_str() {
-        "jpg" | "jpeg" => "image/jpeg",
-        "png" => "image/png",
-        "webp" => "image/webp",
-        "mp4" => "video/mp4",
-        "mov" => "video/quicktime",
-        "m4a" => "audio/mp4",
-        "wav" => "audio/wav",
-        "aac" => "audio/aac",
-        _ => "application/octet-stream",
-    }
 }
 
 pub fn resolve_slack_token(flag_token: &str, cfg: &Config, env_token: Option<&str>) -> String {
