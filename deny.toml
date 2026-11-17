@@ -39,6 +39,9 @@ ignore = [
     "RUSTSEC-2024-0449",
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+    # unmaintained advisories for existing deps humantime & chrono (no safe upgrade)
+    "RUSTSEC-2026-0542",
+    "RUSTSEC-2026-0543",
 ]
 
 [sources]
