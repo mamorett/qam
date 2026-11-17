@@ -163,22 +163,28 @@ fn build_snap_cmd() -> Command {
                 .default_value("tcp")
                 .help("RTSP transport: tcp|udp"),
         )
+        .arg(bool_arg(
+            "slack",
+            "Upload the capture to Slack (default channel from config)",
+        ))
         .arg(
             Arg::new("slack-channel")
                 .long("slack-channel")
                 .num_args(0..=1)
                 .default_missing_value("")
-                .help("Slack channel or user to upload to (e.g. #general, @alice)"),
+                .help(
+                    "Slack channel or user to upload to (e.g. #general, @alice); implies --slack",
+                ),
         )
         .arg(
             Arg::new("slack-message")
                 .long("slack-message")
-                .help("Optional message to post with the file"),
+                .help("Optional message to post with the file; requires --slack"),
         )
         .arg(
-            Arg::new("slack-token")
-                .long("slack-token")
-                .help("Slack API token (overrides config and SLACK_TOKEN env var)"),
+            Arg::new("slack-token").long("slack-token").help(
+                "Slack API token (overrides config and SLACK_TOKEN env var); requires --slack",
+            ),
         )
         .arg(
             Arg::new("stream")
@@ -258,22 +264,28 @@ fn build_clip_cmd() -> Command {
                 .default_value("tcp")
                 .help("RTSP transport: tcp|udp"),
         )
+        .arg(bool_arg(
+            "slack",
+            "Upload the capture to Slack (default channel from config)",
+        ))
         .arg(
             Arg::new("slack-channel")
                 .long("slack-channel")
                 .num_args(0..=1)
                 .default_missing_value("")
-                .help("Slack channel or user to upload to (e.g. #general, @alice)"),
+                .help(
+                    "Slack channel or user to upload to (e.g. #general, @alice); implies --slack",
+                ),
         )
         .arg(
             Arg::new("slack-message")
                 .long("slack-message")
-                .help("Optional message to post with the file"),
+                .help("Optional message to post with the file; requires --slack"),
         )
         .arg(
-            Arg::new("slack-token")
-                .long("slack-token")
-                .help("Slack API token (overrides config and SLACK_TOKEN env var)"),
+            Arg::new("slack-token").long("slack-token").help(
+                "Slack API token (overrides config and SLACK_TOKEN env var); requires --slack",
+            ),
         )
         .arg(
             Arg::new("stream")
@@ -337,22 +349,28 @@ fn build_audio_cmd() -> Command {
                 .value_parser(clap::value_parser!(i64))
                 .help("Recording duration in seconds (alternative to --dur)"),
         )
+        .arg(bool_arg(
+            "slack",
+            "Upload the capture to Slack (default channel from config)",
+        ))
         .arg(
             Arg::new("slack-channel")
                 .long("slack-channel")
                 .num_args(0..=1)
                 .default_missing_value("")
-                .help("Slack channel or user to upload to (e.g. #general, @alice)"),
+                .help(
+                    "Slack channel or user to upload to (e.g. #general, @alice); implies --slack",
+                ),
         )
         .arg(
             Arg::new("slack-message")
                 .long("slack-message")
-                .help("Optional message to post with the file"),
+                .help("Optional message to post with the file; requires --slack"),
         )
         .arg(
-            Arg::new("slack-token")
-                .long("slack-token")
-                .help("Slack API token (overrides config and SLACK_TOKEN env var)"),
+            Arg::new("slack-token").long("slack-token").help(
+                "Slack API token (overrides config and SLACK_TOKEN env var); requires --slack",
+            ),
         )
         .arg(
             Arg::new("stream")
@@ -685,6 +703,7 @@ where
                     .cloned()
                     .unwrap_or_else(|| "true".to_string()),
                 rtsp_client: sub.get_one::<String>("rtsp-client").cloned(),
+                slack: sub.get_one::<bool>("slack").copied(),
                 slack_channel: sub.get_one::<String>("slack-channel").cloned(),
                 slack_token: sub.get_one::<String>("slack-token").cloned(),
                 slack_message: sub.get_one::<String>("slack-message").cloned(),
@@ -736,6 +755,7 @@ where
                 audio_only: *sub.get_one::<bool>("audio-only").unwrap_or(&false),
                 audio_codec: sub.get_one::<String>("audio-codec").cloned(),
                 overwrite: sub.get_one::<String>("overwrite").cloned(),
+                slack: sub.get_one::<bool>("slack").copied(),
                 slack_channel: sub.get_one::<String>("slack-channel").cloned(),
                 slack_token: sub.get_one::<String>("slack-token").cloned(),
                 slack_message: sub.get_one::<String>("slack-message").cloned(),
@@ -785,6 +805,7 @@ where
                 path: sub.get_one::<String>("path").cloned(),
                 audio_codec: sub.get_one::<String>("audio-codec").cloned(),
                 overwrite: sub.get_one::<String>("overwrite").cloned(),
+                slack: sub.get_one::<bool>("slack").copied(),
                 slack_channel: sub.get_one::<String>("slack-channel").cloned(),
                 slack_token: sub.get_one::<String>("slack-token").cloned(),
                 slack_message: sub.get_one::<String>("slack-message").cloned(),

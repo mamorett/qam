@@ -52,6 +52,10 @@ pub struct SnapArgs {
     #[arg(long = "rtsp-client")]
     pub rtsp_client: Option<String>,
 
+    /// Upload the capture to Slack (default channel from config)
+    #[arg(long = "slack")]
+    pub slack: Option<bool>,
+
     /// Slack channel to post to
     #[arg(long = "slack-channel", num_args = 0..=1, default_missing_value = "")]
     pub slack_channel: Option<String>,
@@ -83,7 +87,15 @@ pub async fn run_snap(
         return Err(QamError::Usage("--camera is required".into()));
     }
 
-    // 2. Validate stream vs path
+    // 2. Validate stream vs path and delivery flags before capture
+    let slack_flags = SlackFlags {
+        enabled: args.slack,
+        channel: args.slack_channel,
+        token: args.slack_token,
+        message: args.slack_message,
+    };
+    let slack_requested = slack_flags.upload_requested()?;
+
     let stream = args.stream.unwrap_or_default();
     let custom_path = args.path.unwrap_or_default();
     if !stream.is_empty() && !custom_path.is_empty() {
@@ -123,6 +135,12 @@ pub async fn run_snap(
     let overwrite = parse_bool_flag(&args.overwrite).unwrap_or(true);
     if out_path != "-" && !overwrite && Path::new(&out_path).exists() {
         return Err(QamError::Media(format!("output file exists: {out_path}")));
+    }
+
+    if out_path == "-" && slack_requested {
+        return Err(QamError::Usage(
+            "--out - cannot be used with Slack upload".into(),
+        ));
     }
 
     // 4. Load config and find camera
@@ -169,16 +187,13 @@ pub async fn run_snap(
     })
     .await?;
 
-    // 7. Slack upload if configured
+    // 7. Post-capture delivery
     let outcome = deliver(DeliveryRequest {
         out_path: &out_path,
         is_temp_file,
         cfg: &cfg,
-        slack: SlackFlags {
-            channel: args.slack_channel,
-            token: args.slack_token,
-            message: args.slack_message,
-        },
+        slack: slack_flags,
+        slack_api_base: None,
     })
     .await?;
 

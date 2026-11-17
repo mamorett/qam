@@ -30,12 +30,14 @@ Options:
           RTSP transport: tcp|udp [default: tcp]
   -s, --seconds <seconds>
           Recording duration in seconds (alternative to --dur)
+      --slack[=<slack>]
+          Upload the capture to Slack (default channel from config)
       --slack-channel [<slack-channel>]
-          Slack channel or user to upload to (e.g. #general, @alice)
+          Slack channel or user to upload to (e.g. #general, @alice); implies --slack
       --slack-message <slack-message>
-          Optional message to post with the file
+          Optional message to post with the file; requires --slack
       --slack-token <slack-token>
-          Slack API token (overrides config and SLACK_TOKEN env var)
+          Slack API token (overrides config and SLACK_TOKEN env var); requires --slack
       --stream <stream>
           RTSP path segment (stream1 or stream2); ignored if --path is set
       --timeout <timeout>

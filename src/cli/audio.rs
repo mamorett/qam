@@ -50,6 +50,10 @@ pub struct AudioArgs {
     #[arg(long = "overwrite")]
     pub overwrite: Option<String>,
 
+    /// Upload the capture to Slack (default channel from config)
+    #[arg(long = "slack")]
+    pub slack: Option<bool>,
+
     /// Slack channel to post to
     #[arg(long = "slack-channel", num_args = 0..=1, default_missing_value = "")]
     pub slack_channel: Option<String>,
@@ -87,6 +91,7 @@ pub async fn run_audio(
         audio_only: true,
         audio_codec: args.audio_codec,
         overwrite: args.overwrite,
+        slack: args.slack,
         slack_channel: args.slack_channel,
         slack_token: args.slack_token,
         slack_message: args.slack_message,

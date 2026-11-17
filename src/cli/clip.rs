@@ -64,6 +64,10 @@ pub struct ClipArgs {
     #[arg(long = "overwrite")]
     pub overwrite: Option<String>,
 
+    /// Upload the capture to Slack (default channel from config)
+    #[arg(long = "slack")]
+    pub slack: Option<bool>,
+
     /// Slack channel to post to
     #[arg(long = "slack-channel", num_args = 0..=1, default_missing_value = "")]
     pub slack_channel: Option<String>,
@@ -122,6 +126,14 @@ pub async fn run_clip(
             "cannot combine --audio-only and --no-audio".into(),
         ));
     }
+
+    let slack_flags = SlackFlags {
+        enabled: args.slack,
+        channel: args.slack_channel,
+        token: args.slack_token,
+        message: args.slack_message,
+    };
+    let _slack_requested = slack_flags.upload_requested()?;
 
     let stream = args.stream.unwrap_or_default();
     let custom_path = args.path.unwrap_or_default();
@@ -237,16 +249,13 @@ pub async fn run_clip(
     })
     .await?;
 
-    // 9. Slack upload if configured
+    // 9. Post-capture delivery
     deliver(DeliveryRequest {
         out_path: &out_path,
         is_temp_file,
         cfg: &cfg,
-        slack: SlackFlags {
-            channel: args.slack_channel,
-            token: args.slack_token,
-            message: args.slack_message,
-        },
+        slack: slack_flags,
+        slack_api_base: None,
     })
     .await?;
 
