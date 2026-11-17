@@ -585,7 +585,7 @@ impl S3Uploader {
                     let resp_body = resp.text().await.unwrap_or_default();
                     let err = format_s3_error(
                         "PUT",
-                        &self.settings.bucket,
+                        &self.settings,
                         clean_key,
                         status.as_u16(),
                         &resp_body,
@@ -689,7 +689,7 @@ impl S3Uploader {
                     let resp_body = resp.text().await.unwrap_or_default();
                     let err = format_s3_error(
                         method,
-                        &self.settings.bucket,
+                        &self.settings,
                         clean_key,
                         status.as_u16(),
                         &resp_body,
@@ -774,12 +774,13 @@ fn parse_s3_xml_error(body: &str) -> Option<S3XmlError> {
 
 fn format_s3_error(
     method: &str,
-    bucket: &str,
+    settings: &S3Settings,
     key: &str,
     status: u16,
     body: &str,
     bucket_region: Option<&str>,
 ) -> QamError {
+    let bucket = &settings.bucket;
     let parsed = parse_s3_xml_error(body);
     let code = parsed.as_ref().map(|p| p.code.as_str()).unwrap_or("");
     let message = parsed.as_ref().map(|p| p.message.as_str()).unwrap_or("");
@@ -795,10 +796,13 @@ fn format_s3_error(
     }
 
     let hint = match (code, status) {
-        ("SignatureDoesNotMatch" | "InvalidAccessKeyId", _) | (_, 403) => Some(
-            "auth failed: check access key/secret, region, and addressing (try `addressing: path`)"
-                .to_string(),
-        ),
+        ("SignatureDoesNotMatch" | "InvalidAccessKeyId", _) | (_, 403) => Some(format!(
+            "auth failed: check access key/secret, region, and addressing (endpoint: {}, region: {}, addressing: {}, access_key_id: {})",
+            settings.endpoint,
+            settings.region,
+            settings.effective_addressing().as_str(),
+            settings.access_key_id,
+        )),
         ("RequestTimeTooSkewed", _) => Some("system clock is off; sync time (NTP)".to_string()),
         ("NoSuchBucket", _) | (_, 404) => Some("bucket not found".to_string()),
         ("AuthorizationHeaderMalformed" | "PermanentRedirect", _) | (_, 301 | 307) => {
