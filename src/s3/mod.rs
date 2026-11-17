@@ -463,6 +463,7 @@ pub struct S3Uploader {
 impl S3Uploader {
     pub fn new(settings: S3Settings) -> Self {
         let client = reqwest::Client::builder()
+            .http1_only()
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(300))
             .redirect(reqwest::redirect::Policy::none())
@@ -797,11 +798,10 @@ fn format_s3_error(
 
     let hint = match (code, status) {
         ("SignatureDoesNotMatch" | "InvalidAccessKeyId", _) | (_, 403) => Some(format!(
-            "auth failed: check access key/secret, region, and addressing (endpoint: {}, region: {}, addressing: {}, access_key_id: {})",
+            "auth failed: check access key/secret, region, and addressing (endpoint: {}, region: {}, addressing: {})",
             settings.endpoint,
             settings.region,
             settings.effective_addressing().as_str(),
-            settings.access_key_id,
         )),
         ("RequestTimeTooSkewed", _) => Some("system clock is off; sync time (NTP)".to_string()),
         ("NoSuchBucket", _) | (_, 404) => Some("bucket not found".to_string()),
